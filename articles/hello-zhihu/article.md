@@ -1,11 +1,11 @@
 ---
 title: 你好,知乎:我用命令行管理自己的内容
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2102429526823265756
+id: 2102429526823265756
 created: 2026-11-07
-published:
+published: 2026-11-07
 tags: [test, workflow]
 ---
 
