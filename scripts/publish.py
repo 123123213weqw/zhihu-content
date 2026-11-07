@@ -26,15 +26,37 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import html as html_mod
 import re
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 import yaml
 from markdown_it import MarkdownIt
 
 FRONTMATTER_KEYS = ["title", "topics", "status", "url", "id", "created", "published", "tags"]
 IMG_RE = re.compile(r'<img src="([^"]+)"([^>]*)>')
+FORMULA_BLOCK_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
+FORMULA_INLINE_RE = re.compile(r"\$([^$\n]+?)\$")
+
+
+def formula_img(tex: str) -> str:
+    """Wrap raw LaTeX as a Zhihu native formula <img>.
+
+    Verified format (survives server-side sanitization): LaTeX goes in the
+    alt attribute, equation URL uses the full https:// scheme.
+    """
+    esc = html_mod.escape(tex, quote=True)
+    return (f'<img eeimg="1" src="https://www.zhihu.com/equation?tex={quote(tex)}" '
+            f'alt="{esc}"/>')
+
+
+def convert_formulas(html: str) -> str:
+    """Convert $$block$$ and $inline$ LaTeX in rendered HTML to Zhihu formula tags."""
+    html = FORMULA_BLOCK_RE.sub(lambda m: formula_img(m.group(1).strip()), html)
+    html = FORMULA_INLINE_RE.sub(lambda m: formula_img(m.group(1).strip()), html)
+    return html
 
 
 def die(msg: str) -> None:
@@ -79,6 +101,21 @@ def dump_frontmatter(meta: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def upload_with_retry(client, img_path: Path, tries: int = 3, wait: float = 5.0) -> dict:
+    """upload_image with retries — Zhihu's image processing occasionally stalls."""
+    import time
+    last: Exception | None = None
+    for i in range(1, tries + 1):
+        try:
+            return client.upload_image(str(img_path), source="article")
+        except Exception as e:  # noqa: BLE001 - retry any upload/processing failure
+            last = e
+            if i < tries:
+                info(f"  upload attempt {i} failed ({e}); retrying in {wait:.0f}s")
+                time.sleep(wait)
+    raise last  # type: ignore[misc]
+
+
 def zhihu_img_tag(up: dict, alt: str) -> str:
     """Build an <img> tag in Zhihu editor's format (mirrors client._build_img_html)."""
     src = up["src"]
@@ -118,13 +155,13 @@ def main() -> None:
     topics = [str(t) for t in (meta.get("topics") or [])]
 
     md = MarkdownIt("commonmark", {"typographer": True}).enable("table")
-    html = md.render(body)
+    html = convert_formulas(md.render(body))
 
     # --- collect local images referenced in the rendered html ---
     local_imgs: list[tuple[str, str]] = []  # (src, rest-of-tag attrs)
     for m in IMG_RE.finditer(html):
         src, rest = m.group(1), m.group(2)
-        if not src.startswith(("http://", "https://", "data:")):
+        if not src.startswith(("http://", "https://", "data:", "//")):
             local_imgs.append((src, rest))
     alt_re = re.compile(r'alt="([^"]*)"')
 
@@ -151,7 +188,7 @@ def main() -> None:
             if not img_path.is_file():
                 die(f"image not found: {img_path}")
             info(f"uploading image: {src}")
-            up = client.upload_image(str(img_path), source="article")
+            up = upload_with_retry(client, img_path)
             new_tag = zhihu_img_tag(up, alt)
             old_tag = f'<img src="{src}"{rest}>'
             html = html.replace(old_tag, new_tag)
