@@ -1,11 +1,11 @@
 ---
 title: 深度学习优化器演进史:每一步都是在填前任的坑
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2102873908689093405
+id: 2102873908689093405
 created: 2026-11-07
-published:
+published: 2026-11-08
 tags: [deep-learning, optimizer]
 ---
 
