@@ -415,3 +415,100 @@ def figE_tree():
 
     fig.tight_layout()
     fig.savefig(f"{OUT}/figE_tree.png"); plt.close(fig)
+
+
+# ================================================================ fig F
+def figF_adaptive():
+    """Adaptive speculation length. (a) fixed depth is suboptimal (anchored to
+    DSpark Fig.2 trends); (b) DSpark confidence-scheduled per-request draft
+    length (example values, mechanism per paper); (c) hardware-aware optimum
+    Theta = tau * SPS (schematic)."""
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+    fig, axes = plt.subplots(1, 3, figsize=(7.4, 3.1))
+
+    # ---------- (a) cumulative expected accepted tokens ----------
+    ax = axes[0]
+    j = np.arange(1, 11)
+    code = np.cumprod(np.full(10, 0.84))          # anchored: 0.87 -> 0.78 avg
+    chat = np.cumprod(np.array([0.68, 0.62, 0.60, 0.58, 0.56, 0.55, 0.55, 0.55, 0.55, 0.55]))
+    exp_code = np.cumsum(code)
+    exp_chat = np.cumsum(chat)
+    ax.plot(j, exp_code, "-o", color=DBLUE, ms=3, lw=1.2, label="易上下文(Code)")
+    ax.plot(j, exp_chat, "-s", color=DRED, ms=3, lw=1.2, label="难上下文(Chat)")
+    ax.text(10.25, exp_code[-1], f"{exp_code[-1]:.1f}", fontsize=7.5, color=DBLUE, va="center")
+    ax.text(10.25, exp_chat[-1], f"{exp_chat[-1]:.1f}", fontsize=7.5, color=DRED, va="center")
+    ax.axvline(8, color="#aaaaaa", ls=":", lw=0.9)
+    ax.text(7.8, 0.5, "固定 $\\gamma{=}8$", fontsize=7, color="#888888",
+            rotation=90, va="bottom", ha="right")
+    ax.annotate("押深仍有收益", xy=(8, exp_code[7]), xytext=(3.2, 4.3),
+                fontsize=7, color=DBLUE,
+                arrowprops=dict(arrowstyle="->", lw=0.8, color=DBLUE))
+    ax.annotate("早饱和,押深白费", xy=(4, exp_chat[3]), xytext=(2.6, 2.9),
+                fontsize=7, color=DRED,
+                arrowprops=dict(arrowstyle="->", lw=0.8, color=DRED))
+    ax.set_xlabel("草稿深度 $j$")
+    ax.set_ylabel("期望接受 $\\mathbb{E}[\\tau\\,|\\,j]$")
+    ax.set_xticks([1, 3, 5, 7, 9]); ax.set_xlim(0.5, 11.6); ax.set_ylim(0, 5.4)
+    ax.legend(fontsize=6.5, loc="upper left")
+    ax.set_title("(a) 固定深度的困境", fontsize=9, pad=5)
+
+    # ---------- (b) DSpark confidence scheduling ----------
+    ax = axes[1]
+    ax.set_title("(b) DSpark 置信调度(示例)", fontsize=9, pad=5)
+    cases = [
+        ("易请求", [0.95, 0.92, 0.90, 0.88, 0.85, 0.80, 0.70], DBLUE, 6),
+        ("难请求", [0.80, 0.60, 0.35, 0.15], DRED, 2),
+    ]
+    for row, (name, cs, color, cut) in enumerate(cases):
+        y0 = 1 - row * 1.18
+        xs = np.arange(1, len(cs) + 1)
+        ax.bar(xs, np.array(cs) * 0.42, bottom=y0, width=0.58,
+               color=color, alpha=0.5, ec=color, lw=0.8)
+        surv = np.cumprod(cs)
+        ax.plot(xs, y0 + surv * 0.42, "-o", color=color, ms=3, lw=1.3)
+        ax.axhline(y0 + 0.5 * 0.42, xmin=0.04, xmax=0.72, color="#888888",
+                   ls=":", lw=0.9)
+        ax.axvline(cut + 0.5, color=color, lw=1.1, ls=(0, (3, 2)))
+        ax.annotate(f"验证长度 = {cut}", xy=(cut + 0.5, y0 + 0.47),
+                    xytext=(cut + 1.15, y0 + 0.5), fontsize=7,
+                    color=color, fontweight="bold", va="center",
+                    arrowprops=dict(arrowstyle="->", lw=0.8, color=color))
+        ax.text(0.5, y0 + 0.06, name, fontsize=7.5, color=color,
+                ha="left", va="bottom")
+    ax.text(0.5, 0.5, "阈值 0.5", fontsize=6.2, color="#888888", va="center", ha="left")
+    ax.text(9.6, 1.68, "$a_j=\\prod_{i\\leq j}c_i$\\n首个 $a_j<0.5$ 前的位置全部送验",
+            fontsize=6.2, color="#555555", ha="right", va="top", linespacing=1.5)
+    ax.set_xlim(0.3, 9.6); ax.set_ylim(-0.42, 2.05)
+    ax.set_xticks([1, 2, 3, 4, 5, 6, 7])
+    ax.set_yticks([])
+    ax.set_xlabel("草稿位置 $i$", fontsize=8)
+    handles = [Patch(fc="#aaaaaa", alpha=0.5, ec="#666666", label="置信 $c_i$"),
+               Line2D([0], [0], color="#666666", marker="o", ms=3, lw=1.2,
+                      label="累积生存 $a_j$")]
+    ax.legend(handles=handles, fontsize=6.2, loc="lower left",
+              bbox_to_anchor=(0.0, -0.02))
+
+    # ---------- (c) hardware-aware optimum ----------
+    ax = axes[2]
+    B = np.linspace(1, 100, 300)
+    sps = 1.0 / (1 + B / 60)                      # engine slowdown w/ batch (schematic)
+    tau = 1 + 2.8 * (1 - np.exp(-B / 45))         # latency-hiding gains w/ batch (schematic)
+    theta = tau * sps
+    bi = int(np.argmax(theta))
+    ax.plot(B, theta / theta.max(), color=DGREEN, lw=1.4, label="$\\Theta=\\tau\\cdot SPS$ (各自归一)")
+    ax.plot(B, tau / tau.max(), color="#999999", lw=0.9, ls="--", label="$\\tau(B)$")
+    ax.plot(B, sps / sps.max(), color="#999999", lw=0.9, ls=":", label="$SPS(B)$")
+    ax.axvline(B[bi], color=DGREEN, lw=1.0, ls=(0, (3, 2)))
+    ax.plot([B[bi]], [theta[bi] / theta.max()], "o", color=DGREEN, ms=4)
+    ax.annotate("吞吐最优点\n(调度器贪心搜索)", xy=(B[bi], theta[bi] / theta.max()),
+                xytext=(B[bi] + 7, 0.42), fontsize=7, color=DGREEN,
+                arrowprops=dict(arrowstyle="->", lw=0.8, color=DGREEN))
+    ax.set_xlabel("验证 batch 规模 $B$")
+    ax.set_ylabel("归一化值")
+    ax.set_ylim(0, 1.12); ax.set_xlim(0, 100)
+    ax.legend(fontsize=6.2, loc="lower left")
+    ax.set_title("(c) 硬件感知最优点(示意)", fontsize=9, pad=5)
+
+    fig.tight_layout(w_pad=2.2)
+    fig.savefig(f"{OUT}/figF_adaptive.png"); plt.close(fig)
