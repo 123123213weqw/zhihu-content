@@ -9,290 +9,259 @@ published:
 tags: [deep-learning, inference, speculative-decoding]
 ---
 
-为什么 DeepSeek 能一边把模型做大、一边把价格打到地板?为什么 vLLM、SGLang 的配置文件里,speculative decoding 一栏的选项越来越多——EAGLE、MTP、DFlash、DSpark?
+为什么 DeepSeek 能一边把模型做大、一边把价格打到地板?为什么 vLLM、SGLang 的配置里 speculative decoding 一栏的选项越来越多——EAGLE、MTP、DFlash、DSpark?
 
-这些名字共享同一个内核思想:**别让大模型一次只算一个 token**。这篇文章把这个内核拆开——包括它的数学(为什么加速是免费的)、它的结构(草稿器怎么设计)、它的工程(怎么调度、怎么部署),以及 2022 到 2026 年六代方法的完整演进。所有关键结论都给出推导,所有性能数字都注明出处。
+这些名字共享同一个内核:**别让大模型一次只算一个 token**。本文把这个内核拆到公式级——每个结论给推导,每个机制给结构,每个数字给出处。比喻只做锚点,一句话,不铺陈。
 
-## 一、解码为什么慢:算一笔访存账
+**记号**:target 模型分布 $p$,draft 模型 $q$,草稿长度 $\gamma$,条件接受率 $\alpha$,接受长度 $\tau$,大模型单次前向耗时 $c$,draft 每 token 耗时 $\beta c$,模型参数量 $N$,权重字节数 $|W|$。
 
-### 1.1 自回归的串行牢笼
+## 一、解码为什么慢:访存账的完整推导
 
-语言模型生成文本是自回归的:第 $t+1$ 个 token 依赖第 $t$ 个的输出。设模型参数量为 $N$,生成一个 token 需要一次完整前向。前向的主要开销在哪?对 batch 大小为 1 的解码阶段,每步的计算量约为
+### 1.1 从自回归到算术强度
 
-$$\text{FLOPs}_{\text{token}} \approx 2N$$
+自回归生成:第 $t{+}1$ 个 token 依赖第 $t$ 个输出,每步一次完整前向。batch $= b$ 时,每步
 
-(每个参数对应一次乘加)。而每一步都必须把全部参数从显存搬运到计算单元一次,访存量为
+$$\text{FLOPs} \approx 2Nb, \qquad \text{Bytes} = |W| + \underbrace{2Lhd\,b\,t}_{\text{KV cache 读取}}$$
 
-$$\text{Bytes}_{\text{token}} = |W| = 2N \;\text{bytes}\;(\text{fp16})$$
+$L$ 为层数、$h$ 为头数、$d$ 为头维。KV 项随上下文 $t$ 线性增长——长上下文下 decode 会先撞 KV 访存墙,这是另一条优化线(PagedAttention、MLA)的领地;本文先看 $b=1$、短上下文的主体项 $|W|$。算术强度:
 
-于是定义该过程的**算术强度**(arithmetic intensity):
+$$\text{AI}(b) = \frac{2Nb}{|W| + 2Lhd\,bt} \;\xrightarrow{\;b=1,\;t\ll|W|/2Lhd\;}\; \approx 1\;\text{FLOP/byte}$$
 
-$$\text{AI} = \frac{\text{FLOPs}}{\text{Bytes}} = \frac{2N}{2N} = 1 \;\text{FLOP/byte}$$
+对照 H100 的机器平衡点 $989\text{TFLOPS} / 3.35\text{TB/s} \approx 295$:解码是教科书级 memory-bound,GPU 计算单元闲置约
 
-### 1.2 屋顶线:问题出在机器平衡点
+$$1 - \frac{1}{295} \approx 99.7\%$$
 
-一块 GPU 的**机器平衡点**为峰值算力与峰值带宽之比。以 H100(SXM)为例:
+速度上限由带宽封顶:$v_{\max} = \text{BW}/|W|$。70B fp16($|W|{=}140$GB)在单卡 H100 上 $v_{\max} \approx 24$ tok/s,与算力无关——堆算力零收益,只有省访存次数才有收益。
 
-$$\frac{\text{Peak FLOPS}}{\text{Peak BW}} = \frac{989\;\text{TFLOPS}}{3.35\;\text{TB/s}} \approx 295 \;\text{FLOP/byte}$$
+![prefill 一次访存并行算出全部位置;decode 一次访存只算 1 个位置](images/figA_membound.png)
 
-解码阶段的 AI = 1,比平衡点低了近 300 倍——这是教科书级的 **memory-bound**:计算单元 99% 以上时间在等数据。此时生成速度的上限由带宽决定:
+### 1.2 三个直接推论(后文全部围绕它们)
 
-$$v_{\max} = \frac{\text{Peak BW}}{|W|}$$
+**推论 1(prefill 是 compute-bound)**:prefill 一次前向算 $L_s$ 个输入位置,$\text{AI} \approx L_s \gg 295$,同一块 GPU 两种工况,decode 的闲置算力是"免费午餐"。
 
-代个具体数字:70B 模型、fp16,权重 $|W| = 140$ GB,单卡 H100:
+**推论 2(batch 的两面)**:$\text{AI}(b) \propto b$(短上下文近似),batch 越大越接近 compute-bound。所以**高并发服务本身就缓解 memory-bound,投机解码的边际收益随 batch 增大而衰减**;而低并发(单用户对话、agent 串行调用、端侧)是投机解码的主场。很多框架因此做动态开关:负载高时自动关投机。这一条是理解 DSpark"吞吐调度"的钥匙,§5.3 回收。
 
-$$v_{\max} = \frac{3350 \;\text{GB/s}}{140 \;\text{GB}} \approx 24 \;\text{tokens/s}$$
-
-此时算力利用率:
-
-$$\frac{v_{\max} \cdot 2N}{\text{Peak FLOPS}} = \frac{24 \times 1.4\times 10^{11}}{9.89\times 10^{14}} \approx 0.34\%$$
-
-**买再多的算力也没用——瓶颈是搬运,不是计算。** 这就是 batch=1 解码的处境。
-
-![prefill 一次访存并行算出全部位置,算力打满;decode 一次访存只算 1 个位置,算力闲置 >95%](images/figA_membound.png)
-
-注意到一个不对称:prefill(处理输入提示词)阶段一次前向要算 $L$ 个位置,FLOPs 变成 $2NL$ 而 Bytes 仍是 $|W|$,算术强度变成 $L$,直接跨过平衡点变成 compute-bound。**同一块 GPU,prefill 时算力打满,decode 时算力闲置 99%——投机解码的全部灵感,就是把这块闲置算力利用起来。**
+**推论 3(verify 近似免费)**:一次前向算 $\gamma{+}1$ 个位置(GEMM 变胖,$\text{AI}$ 提高 $\gamma{+}1$ 倍),在 memory-bound 区内耗时几乎不变——**一次访存,顺便多验证 $\gamma$ 个位置,不要白不要**。这就是投机解码的全部物理基础。
 
 ## 二、内核:猜与验的数学
 
 ### 2.1 三步流程
 
-投机解码由 Google 与 DeepMind 在 2022-2023 年几乎同时提出(Leviathan et al. 与 Chen et al.)。流程:
+draft:小模型 $q$ 连采 $\gamma$ 个 token $x_1..x_\gamma$(链)/一棵树/一个块;verify:$p$ 一次前向算出 $t{+}1..t{+}\gamma{+}1$ 的分布;accept:接受一致前缀,首个分歧处按修正分布重采样一个,丢弃其后草稿。每轮一次大模型访存,期望产出 $\mathbb{E}[\tau]+1$ 个 token(重采样贡献 $+1$)。
 
-1. **draft(猜)**:用一个便宜的小模型 $q$ 连续采样 $\gamma$ 个 token $x_1,\dots,x_\gamma$;
-2. **verify(验)**:大模型 $p$(target)**一次前向**并行计算位置 $t+1,\dots,t+\gamma+1$ 的条件分布;
-3. **accept/reject(收)**:从前往后逐个检查,接受所有"与 $p$ 一致"的前缀 token;遇到第一个分歧,从修正分布重采样一个,丢弃其后所有草稿。
+![上排 4 次访存产 4 token;下排 1 次访存产 3 token](images/figB_timeline.png)
 
-每轮一次大模型访存,平均产出 $\mathbb{E}[\tau]+1$ 个 token($\tau$ 为接受长度)。关键问题是:这样"走捷径",输出分布还等于直接用 $p$ 生成的分布吗?
+### 2.2 无损性证明(rejection sampling)
 
-### 2.2 无损性:rejection sampling 的三行证明
+**命题**:草稿 $x\sim q$,以 $\min(1, p(x)/q(x))$ 概率接受;拒绝时从 $r(x) = \mathrm{norm}\big(\max(0, p(x)-q(x))\big)$ 重采样。则输出严格服从 $p$。
 
-**命题**:设草稿 $x \sim q(\cdot)$,以概率 $\min\left(1, \frac{p(x)}{q(x)}\right)$ 接受;若拒绝,从剩余分布
+**证明**:总拒绝率
 
-$$r(x) = \frac{\max\!\big(0,\; p(x)-q(x)\big)}{\sum_{x'} \max\!\big(0,\; p(x')-q(x')\big)}$$
+$$Z = 1 - \sum_x q(x)\min\left(1,\frac{p(x)}{q(x)}\right) = \sum_x \max\big(0, p(x)-q(x)\big)$$
 
-重采样。则最终样本严格服从 $p$。
+$x$ 经两条互斥路径产出:
 
-**证明**:先算总拒绝率。注意
+$$\Pr(x) = \underbrace{\min\big(q(x), p(x)\big)}_{\text{accept}} + \underbrace{Z\,r(x)}_{\text{reject \& resample}}$$
 
-$$Z \triangleq \Pr(\text{reject}) = 1 - \sum_x q(x)\min\left(1,\frac{p(x)}{q(x)}\right) = \sum_x \max\big(0,\; p(x)-q(x)\big)$$
+$p(x)\ge q(x)$ 时 $r(x)=\frac{p(x)-q(x)}{Z}$,$\Pr(x)=q(x)+p(x)-q(x)=p(x)$;$p(x)<q(x)$ 时 $r(x)=0$,$\Pr(x)=p(x)$。故 $\Pr\equiv p$。**证毕。**
 
-样本 $x$ 最终被产出,走的是两条互斥路径:直接接受,或全体拒绝后重采到 $x$:
+两个工程推论:(i) $q$ 与 $p$ 差距只影响速度,不影响分布——**draft 可以放心大胆地小**;(ii) Medusa 后来的 typical acceptance 放宽了这条:接受准则改为截断的典型集采样,容忍小偏差换更高接受率,换来"近似无损"(原文实测质量损失可忽略)——严格与激进之间有谱系可选。
 
-$$\Pr(x) = \underbrace{\min\big(q(x),\, p(x)\big)}_{\text{accept}} + \underbrace{Z \cdot r(x)}_{\text{reject \& resample}}$$
+### 2.3 期望接受长度与加速比的完整模型
 
-(第一项是"直接接受"的概率,第二项是"全体拒绝后重采到 $x$"的概率。)分情况。当 $p(x) \ge q(x)$:有 $r(x) = \frac{p(x)-q(x)}{Z}$,于是
+逐位置条件接受率 $\alpha_j$、独立近似下:
 
-$$\Pr(x) = q(x) + Z\cdot\frac{p(x)-q(x)}{Z} = p(x)$$
+$$\mathbb{E}[\tau] = \sum_{j=1}^{\gamma}\prod_{i\le j}\alpha_i \approx \frac{\alpha(1-\alpha^{\gamma})}{1-\alpha}$$
 
-当 $p(x) < q(x)$:有 $r(x) = 0$,于是
+加速比($c$ = target 前向,$\beta c$ = draft 每 token):
 
-$$\Pr(x) = p(x) + 0 = p(x)$$
+$$S(\gamma) = \frac{1+\mathbb{E}[\tau]}{1+\gamma\beta}, \qquad \frac{\partial S}{\partial \gamma} = 0 \Rightarrow \text{最优 } \gamma \text{ 存在内点}$$
 
-两种情况合起来覆盖全集,故 $\Pr \equiv p$。**证毕。**
+代数字:$\alpha=0.8,\beta=0.02,\gamma=4$:$\mathbb{E}[\tau]\approx2.95$,$S\approx3.7\times$。三个可检验的极限:
 
-这个三行证明就是"免费加速"的数学根基:无论草稿器多差($q$ 偏离 $p$ 多远),输出分布永远无损——差的草稿只影响速度,不影响正确性。
+- $\beta \to 0$(draft 免费):最优 $\gamma \to \infty$,但收益饱和于 $\frac{1+\alpha/(1-\alpha)}{1} = \frac{1}{1-\alpha}$($\alpha=0.8$ 时 5×)
+- $\alpha \to 1$: $S \to \gamma{+}1$(完美草稿,验证即产出)
+- 高并发(推论 2):$c$ 本身下降,verify 不再近似免费,$S \to 1$
 
-### 2.3 期望接受长度与加速比
+![接受前缀 τ=3、拒绝位重采样、其后丢弃](images/figC_accept.png)
 
-定义逐位置**条件接受率**
-
-$$\alpha_j = \mathbb{E}_{x_{1:j-1}}\;\mathbb{E}_{x_j \sim q}\left[\min\left(1, \frac{p(x_j\mid x_{<j})}{q(x_j\mid x_{<j})}\right)\right]$$
-
-在独立性近似下(各位置接受互不相关),接受长度不小于 $j$ 的概率为 $\prod_{i\le j}\alpha_i$,于是
-
-$$\mathbb{E}[\tau] = \sum_{j=1}^{\gamma}\prod_{i=1}^{j}\alpha_i \;\approx\; \frac{\alpha(1-\alpha^{\gamma})}{1-\alpha} \quad (\alpha_i \equiv \alpha)$$
-
-加速比。设大模型一次前向耗时 $c$,小模型每 token 耗时 $\beta c$($\beta \ll 1$):
-
-$$S = \frac{c\,(\mathbb{E}[\tau]+1)}{\gamma\beta c + c} = \frac{\mathbb{E}[\tau]+1}{1+\gamma\beta}$$
-
-直觉立刻浮现:草稿越准($\alpha\to 1$)、越便宜($\beta\to 0$),加速越大;但 $\gamma$ 过大时 $\alpha^\gamma$ 衰减,分母却在涨——**最优深度存在内点**。第五节会回到这个最优化问题。
-
-$$\text{例:}\;\alpha = 0.8,\;\beta = 0.02,\;\gamma = 4 \;\Rightarrow\; \mathbb{E}[\tau] \approx 2.95,\; S \approx \frac{3.95}{1.08} \approx 3.7\times$$
-
-![上排:自回归 4 次访存产 4 token;下排:draft 便宜、verify 一次访存产 3 token](images/figB_timeline.png)
-
-![接受前缀 τ=3、拒绝位重采样、其后丢弃;rejection sampling 保证分布无损](images/figC_accept.png)
+**KV cache 的隐藏账**:verify 那次前向会给 $\gamma{+}1$ 个位置都算出 KV;接受前缀之后,被拒位置的 KV 必须丢弃(回滚)。工程上用"先只保留共享前缀的 KV + 增量补算"或直接重算,各框架实现不同,这是投机解码系统的第一大坑。
 
 ## 三、草稿从哪来:六代演进
 
-验证的数学是死的,变化的是"草稿从哪来"。这一条进化线上,每一代都在改上一代的训练方式与结构。
+验证是死数学,变化的是 drafter 的结构与训练。四种挂法的结构对照:
 
-![四种 drafter 的结构与训练方式:MTP 焊进预训练、Medusa 嫁接、EAGLE 旁听特征、dFlash 独立配对](images/figG_drafter.png)
+![MTP 焊进预训练、Medusa 嫁接、EAGLE 旁听特征、dFlash 独立配对](images/figG_drafter.png)
 
-### 3.1 第一代(2022-23):独立小模型
+### 3.1 独立小模型(2022-23)
 
-直接训练/挑选一个小模型当 drafter。缺陷:小模型与 $p$ 的分布对齐差($\alpha$ 低),且服务要同时驻留两个模型。原始论文在 T5-XXL 上用 T5-small 打草稿,约 2-3×。
+直接配一个小模型。$\alpha$ 低(分布不对齐)、部署双模型。T5-XXL + T5-small 约 2-3×(Leviathan et al.)。
 
-### 3.2 第二代:Medusa(2023.09)——嫁接解码头
+### 3.2 Medusa(2023.09):嫁接 $k$ 个头
 
-冻结主干,顶部嫁接 $k$ 个轻量解码头,第 $i$ 个头直接预测位置 $t+i$ 的 token(跳过中间 token)。训练目标:
+冻结主干,顶部接 $k$ 个头(单层 transformer + 线性),第 $i$ 头直接预测 $x_{t+i}$(跳过中间 token 的串行依赖——每个头都从同一份顶层特征出发):
 
-$$\mathcal{L} = \sum_{i=1}^{k} \text{CE}_i + \lambda\,\mathcal{L}_{\text{conn}}$$
+$$\mathcal{L} = \sum_{i=1}^{k}\text{CE}_i, \qquad \text{Medusa-2:} \quad \mathcal{L} + \lambda_{\text{conn}}\|\Delta h\|$$
 
-其中 $\mathcal{L}_{\text{conn}}$ 是 Medusa-2 联合微调时约束主干输出不漂移的连接损失。配合树注意力(第四节)验证,约 2-3×。缺陷:头与主干"不够亲"——冻结意味着头只能旁听,不能重塑主干特征。
+Medusa-1 只训头;Medusa-2 解冻主干联合微调,$\mathcal{L}_{\text{conn}}$ 约束主干输出不漂移。2-3×。局限:头与主干特征"不够亲",深层头的预测质量掉得快。
 
-### 3.3 第三代:EAGLE(2024)——在特征层自回归
+### 3.3 EAGLE(2024):特征层自回归
 
-EAGLE 的核心观察是**信息论式**的:token 是离散的、有损的,相邻 token 的映射多对一;而连续特征(hidden state)保留的信息远多于 token。于是 drafter 不猜 token,改猜**下一位置的倒数第二层特征**:
+关键观察:token 是离散有损投影,特征空间信息量更大、映射更平滑。drafter 单层,自回归预测**下一位置的主干特征**(不是 token):
 
-$$\tilde{h}_{t+1} = f_{\text{draft}}\big([\,h_t^{(L-1)},\; \text{Embed}(x_t)\,]\big), \qquad x_{t+1} = \text{LMhead}(\tilde h_{t+1})$$
+$$\tilde h_{t+1} = f_\theta\big([\,h_t^{(L-1)},\;\text{Emb}(x_t)\,]\big),\quad x_{t+1} = \text{LMhead}_p(\tilde h_{t+1})$$
 
-drafter 只有单层 transformer,却因为工作在平滑的特征空间,$\alpha$ 显著高于 token 级方案。训练分两阶段:先用 target 前向收集的 $(h_t, h_{t+1})$ 对做静态蒸馏,再用 drafter 自回归采样的数据(贴近推理时的真实状态分布)训练。EAGLE-2 加动态树,EAGLE-3 改多层特征融合与对比目标,一路到 3-4×,成为 2024-25 开源社区的事实标准。
+训练目标(主干冻结):对齐特征 + 蒸馏输出分布
 
-### 3.4 第四代:MTP(2024-25)——把草稿焊进预训练
+$$\mathcal{L} = \big\|\tilde h - h\big\|^2 + \text{CE}\big(\text{LMhead}_p(\tilde h),\, x^*\big)$$
 
-前三代都是"训完再改"。MTP(Multi-Token Prediction)把多 token 预测写进预训练:Meta(Gloeckle et al., 2024.04)最初作为**训练技术**提出——强迫模型往前看 $\gamma$ 步,缓解教师强制的曝光偏差;DeepSeek-V3(2024.12)首次把它工程化为**生产级推理加速**。
+两阶段:static(target 前向收集 $(h_t, h_{t+1})$ 对)→ draft 阶段(drafter 自采样训练,贴近推理时"已跑偏"的状态分布)。EAGLE-2 加动态树(§4),EAGLE-3 改多层特征融合 + 对比目标,3-4×,成为开源事实标准。
 
-结构:主干倒数第二层特征 $h^0$ 与上一 token 的 embedding 融合,过一个独立的 transformer 层,共享主干的 LM head:
+### 3.4 MTP(2024-25):焊进预训练
 
-$$h^{k} = \text{MTP}_k\big(\text{Proj}([h^{0},\;\text{Embed}(x)])\big)$$
+Meta(Gloeckle et al. 2024)提出时是训练技术:多步前瞻缓解教师强制的暴露偏差。DeepSeek-V3 把它工程化为推理加速:主干倒数第二层特征 $h^0$ 与 token embedding 融合,过一个独立 transformer 层,共享主干 LM head:
 
-预训练损失按深度加权($k$ 越深权重越低):
+$$h^{k} = \text{MTP}_k\big(\text{Proj}([h^{0}, \text{Emb}(x)])\big)$$
 
-$$\mathcal{L} = \mathcal{L}_{\text{main}} + \lambda \sum_{k=1}^{\gamma} \frac{\gamma+1-k}{\gamma}\,\text{CE}_k$$
+预训练联合损失,深度加权(浅头权重大、深头权重小,余弦衰减):
 
-推理时配置一层 MTP:主头出 $t+1$、MTP 头出 $t+2$,一次验证两个位置。代入第二节的公式($\gamma=1$,$\mathbb{E}[\tau] = \alpha$):
+$$\mathcal{L} = \mathcal{L}_{\text{main}} + \lambda\sum_{k=1}^{\gamma}\frac{\gamma+1-k}{\gamma}\,\text{CE}_k$$
 
-$$S = \frac{1+\alpha}{1+\beta}, \qquad \alpha \approx 0.85\text{--}0.90 \;\Rightarrow\; S \approx 1.8\times$$
+推理配置单层($\gamma=1$):主头出 $t{+}1$、MTP 头出 $t{+}2$,一次验证两位置。代入 §2.3:
 
-这正是 DeepSeek 官方 SGLang 部署报告的 1.8×。看起来不惊人,但代价近乎为零:无独立模型、无配对训练、显存开销可忽略。2025 年 Qwen3、GLM-4.5 等模型原生携带 MTP 权重,Jetson AI Lab 在 AGX Thor 上实测 Qwen 27B + MTP(depth 3):13 → 35 tokens/s,约 **2.7×**——投机解码从"外挂"变成了"出厂预装"。
+$$S = \frac{1+\alpha}{1+\beta} \approx \frac{1.9}{1.05} \approx 1.8\times \quad (\alpha\approx0.9)$$
 
-### 3.5 第五代:dFlash(2026)——块并行,把自回归请出草稿
+与 DeepSeek 官方 SGLang 部署的 1.8× 严丝合缝。**为什么推理只用一层**:单层 MTP 与主干共享 embedding/head,增量显存 $\approx$ 一个 transformer 层;$k$ 层 MTP 的收益受 $\alpha^k$ 衰减,而 KV 管理与验证宽度成本线性涨,1-2 层是甜点。Qwen3、GLM-4.5 原生携带 MTP 权重;Jetson 实测 Qwen 27B depth 3:13→35 tok/s(2.7×)。出厂预装,零配对成本——代价是与 checkpoint 绑死、上限低。
 
-前四代 drafter 都是串行的:第 $i$ 个草稿依赖第 $i-1$ 的实际取值,延迟 $O(\gamma)$。dFlash(Chen, Liang & Liu, *Block Diffusion for Flash Speculative Decoding*)换成 block diffusion 的**完形填空**:
+### 3.5 dFlash(2026):块并行
 
-**输入**是 1 个 anchor token 加 $\gamma$ 个共享 mask 占位向量;**块内双向注意力**(mask 位置互相可见、但都不知道彼此最终取值);一次前向,全部位置同时出 token;KV 注入把 target 的多层隐状态投影进 drafter 每层作条件。伪代码:
+前四代 draft 都串行(第 $i$ 个依赖第 $i{-}1$ 的实际取值,延迟 $O(\gamma)$)。dFlash(Chen, Liang & Liu)改成完形填空:输入 = 1 个 anchor + $\gamma$ 个共享 mask 向量,块内**双向注意力**(每个空位看得见上下文和其他空位的存在,看不见它们的取值),一次前向全部位置同时出 token;KV 注入把 target 多层隐状态投影进 drafter 每层:
 
 ```python
-x = concat(anchor_emb, mask_emb.repeat(gamma))   # γ+1 个输入位
-h = drafter(x, context=kv_inject(target_hidden)) # 块内双向注意力,一次前向
-logits = lm_head(h[:, 1:])                        # γ 个位置并行出分布
-d = sample(logits)                                # d_1 … d_γ 同时落地
+x = concat(anchor_emb, mask_emb.repeat(gamma))    # γ+1 个输入位
+h = drafter(x, context=kv_inject(target_hidden))  # 块内双向,一次前向
+d = sample(lm_head(h[:, 1:]))                     # d_1 … d_γ 同时落地
 ```
 
-延迟特性变了:$t_{\text{draft}} = O(1)$ 与 $\gamma$ 无关,于是可以放心用更深的 drafter、更大的 $\gamma$(官方推荐 depth 15)。代价是联合分布被因式分解:
+注意力 mask 的矩阵形式(块内全可见,块外因果):
 
-$$q(x_1,\dots,x_\gamma) = \prod_{i=1}^{\gamma} q(x_i \mid x_{\le t}) \quad\text{而非}\quad \prod_i q(x_i \mid x_{\le t}, x_{t+1:i-1})$$
+$$M[i,j] = \begin{cases}1 & j \le t \;\text{(prefix)}\\ 1 & i,j \in \text{block}\\ 0 & \text{else}\end{cases}$$
 
-块内位置互相"看不见对方实际填了什么",后缀位置的草稿容易与前缀打架——这就是**后缀衰减**(第六节 R2 图:DFlash 块尾条件接受率从 0.87 掉到 0.78、Chat 从 0.72 掉到 0.63)。
+延迟 $O(1)$、与 $\gamma$ 无关 → 敢用深 drafter 和大 $\gamma$(推荐 depth 15)。代价是联合分布被因式分解:
 
-![dFlash 机制四层:序列切块 → anchor+掩码一次前向并行出块 → target 逐位判决截断 → 确认并入,末位成为下一块 anchor](images/figD_dflash.png)
+$$q_{\text{dflash}}(x_1..x_\gamma) = \prod_{i=1}^{\gamma} q(x_i \mid x_{\le t}) \quad\text{vs 真值}\quad \prod_i q(x_i \mid x_{\le t},\, x_{t+1:i-1})$$
 
-训练侧(承接上一节的讨论):推理只用"1 anchor + γ 连续 mask"这一种姿势,训练必须见过多样的挖法——mask 数量、位置、块长、预填比例全部随机化(mask scheduling),并以 on-policy 方式采集 target 在语料上的隐状态与分布作监督。**便宜了推理,费在训练管线。**
+每个空位填的时候不知道别的空最终填了什么——像同一排人各写各的,意思可能打架(这就是"后缀衰减":块尾条件接受率掉到 0.63-0.78,§6 R2 图)。最优 $\gamma$ 的一阶条件也变了:draft 边际成本 $\approx 0$,$\gamma$ 上限只受"验证宽度成本 + 生存概率 $\prod\alpha_i$ 衰减"约束,所以块系天然押深。
 
-### 3.6 第六代:DSpark(2026)——并行成型 + 串行修正 + 置信调度
+![dFlash 机制:切块→mask 一次前向并行出块→逐位判决截断→回环](images/figD_dflash.png)
 
-DSpark(北大 & DeepSeek,arXiv:2607.05147)在 DFlash 骨干上打三个补丁:
+训练侧:mask 调度随机化(数量、位置、块长、预填比例全随机——推理只摆一种姿势,训练必须见过一百种),监督是 on-policy 的(用 target 跑语料拿隐状态与分布)。便宜了推理,费在训练管线,且专机专用。
 
-1. **轻量串行头**(Markov/RNN):整块并行生成后,逐位置以前文为条件快速 refine,直接治理后缀衰减;
-2. **置信头**:预测每个位置的条件接受概率 $c_{r,i}$,经顺序温度缩放(STS)校准;
-3. **硬件感知调度器**:由累积生存概率 $a_{r,j}=\prod_{i\le j}c_{r,i}$ 与实测吞吐曲线联合决定每条请求的验证长度(第五节展开)。
+### 3.6 DSpark(2026):并行 + 串行修正 + 置信调度
 
-串行头的开销仅为全轮延迟的 0.2%-1.3%,换来接受长度比 DFlash 高 16-18%、比 EAGLE-3 高 27-31%(第六节 R1 图)。
+DSpark(北大 & DeepSeek,arXiv:2607.05147)在 dFlash 骨干上叠三个件:
+
+**串行修正头**(Markov/RNN,把块内依赖补回来):
+
+$$\hat x_i \sim g_\phi(x_i \mid \hat x_{i-1},\dots,\hat x_{1},\; \text{block}_i)$$
+
+并行骨干管速度,一层串行头管一致性——开销仅全轮延迟的 0.2%-1.3%,接受长度比 dFlash 高 16-18%、比 EAGLE-3 高 27-31%。
+
+**置信头** + 顺序温度缩放校准(STS):
+
+$$c_i = \sigma(w^\top h_i + b), \qquad \tilde c_i = c_i^{1/T_i} \Big/ \text{norm},\quad T_i \text{ 仅依赖位置 } i$$
+
+**硬件感知调度器**(§5.3 形式化)。
 
 ## 四、候选的组织:链、树、块
 
-草稿的组织方式是第一个正交维度。
+**链**:全对概率 $\alpha^\gamma$ 指数衰减。
 
-**链(线性)**:一条串。深度 $\gamma$ 的链全部正确概率 $\alpha^\gamma$,指数衰减。
+**树**:每层 top-$k$ 扇出。树注意力把整棵树摊进一次前向,mask 只放行祖先:
 
-**树**:每层保留 top-$k$ 候选扇出。一次前向并行验证整棵树的武器是**树注意力**:树中每个位置只 attend 自己的祖先路径。设树 $T$ 的节点集,对节点 $v$:
+$$\text{mask}(v,u) = \mathbf{1}\big[u \in \text{Anc}(v) \cup \{v\}\big]$$
 
-$$\text{mask}(v, u) = \mathbf{1}\left[u \in \text{Anc}(v) \cup \{v\}\right]$$
+期望接受长度 = 最深全对路径深度。$b_l$ 条近似独立(独立近似)的深度 $l$ 路径,至少一条全对:
 
-于是 $\gamma{+}1$ 条互斥路径可以摊平进一个序列一次算完。期望接受长度为"最深全对路径":
+$$\mathbb{E}[\tau_{\text{tree}}] = \sum_{l\ge1}\Pr\big(\exists\ \text{accepted path} \ge l\big) \approx \sum_{l\ge1}\Big(1-(1-\alpha^l)^{b_l}\Big)$$
 
-$$\mathbb{E}[\tau_{\text{tree}}] = \sum_{d\ge 1} \Pr\big(\exists\ \text{an accepted path of depth} \ge d\big)$$
+同样预算下远高于链——多条路,总有一条走得远(直观锚点就这一句)。
 
-同样验证预算下,树的 $\mathbb{E}[\tau]$ 远高于链——**总有一条路走得远**。谱系:
+![draft 树与树注意力 mask:每个位置只看祖先](images/figE_tree.png)
 
-- **Medusa**:多头候选的笛卡尔积成树(TOMD 树注意力);
-- **EAGLE-2**(2024.06):**动态树**——按 drafter 置信度决定扩展形状,易句浅宽、难句深窄,接受长度冲到 4.26;
-- **Sequoia**(2024.02):把树形设计建成约束优化 $\max_{T}\,\mathbb{E}[\tau]\;\text{s.t.}\;|T|\le B$,用动态规划离线求解,结论是最优树**上宽下窄**。
+谱系:**Medusa** 多头笛卡尔积 + TOMD;**EAGLE-2** 动态树——按 drafter 置信度决定扩展形状(易句浅宽快走、难句深窄重押,接受长度 4.26);**Sequoia**(2024.02)把树形做成约束优化:
 
-![draft 树:每层 top-k 扇出,绿色为被接受的最长路径;右:树注意力 mask,每个位置只看祖先](images/figE_tree.png)
+$$\max_{T}\ \mathbb{E}[\tau(T)] \quad \text{s.t.} \quad |T| \le B$$
 
-**块**:dFlash 式整块并行,深度零延迟但有后缀衰减。2026 年的主战场正是**树系(EAGLE-3)对块系(DSpark)**的正面对决。
+用 DP 离线求解,结构结论:**最优树上宽下窄**(浅层接受率高、值得多押)。块系(dFlash/DSpark)不是树——块内无父子分支,是"扁平并行"。
 
-## 五、深度的调度:静态 $\gamma$ 与自适应
+## 五、深度的调度:静态与自适应
 
-第二个正交维度:每轮押多深。
+### 5.1 固定 $\gamma$ 必然次优
 
-### 5.1 固定深度的次优性
+接受率随上下文难度波动:模板文本近乎确定,创作文本处处分歧。同一 $\gamma$ 对易上下文太浅(收益没吃满)、对难上下文太深(白 draft + 验证浪费):
 
-接受率随上下文难度波动。用 2.3 的模型,最优 $\gamma$ 应当满足边际条件;而 $\alpha$ 本身逐上下文变化——同一个 $\gamma$ 对"中华人民共和国的首都是"(近乎确定性)太浅,对创作性文本太深。实测(锚定 DSpark 论文 Figure 2 的 Code/Chat 条件接受率):
+![易上下文押深仍有收益,难上下文早饱和](images/figF_adaptive.png)
 
-![易上下文押深仍有收益,难上下文早饱和;固定 γ=8 对两者都不优](images/figF_adaptive.png)
+### 5.2 最优停止的形式化
 
-### 5.2 自适应一族
+继续押第 $j{+}1$ 个位置的边际期望产出是生存概率 $\times$ 置信:$a_j \cdot c_{j+1}$(其中 $a_j=\prod_{i\le j}c_i$)。最优停止条件:
 
-| 方法 | 深度决策信号 | 代价 |
+$$a_j \cdot c_{j+1} \ge \kappa \quad \Leftrightarrow \quad \text{继续押;否则停}$$
+
+$\kappa$ 是摊销的验证成本比。各方法的差别只在"怎么估 $c$":
+
+| 方法 | $c$ 的估计 | 代价 |
 |---|---|---|
-| SVIP(2023) | drafter 输出分布的熵 | 免训练 |
-| AdaEDL(2024.10) | 熵早停,免训练免参数 | 零开销,比静态快 10-57% |
-| SpecDec++(2024.05) | 训练 stopping head(最优停止问题) | 需训练 |
-| DISCO(2024) | 分类器逐轮定长,分布可证不变 | 需训练 |
-| Learning to Draft(2026) | 强化学习双策略协同 | 训练最重 |
-| DSpark(2026) | 置信调度 + 硬件吞吐曲线 | 一个置信头 |
+| SVIP / AdaEDL | drafter 输出熵 $H(q_i)$(熵高=猜虚了) | 免训练;AdaEDL 比静态快 10-57% |
+| SpecDec++ / DISCO | 学习 stopping head / 分类器 | 需训练 |
+| DSpark | 置信头 + STS 校准(直接预测 $c_i$) | 一个头 |
 
-熵直觉:$q$ 的熵升高意味着草稿"越猜越虚",$\alpha$ 必然走低,继续押是浪费。
+### 5.3 DSpark 的系统级调度
 
-### 5.3 DSpark 的调度数学
+把"逐请求深浅"与"引擎吞吐"联合优化。引擎实测每秒步数 $SPS(B)$ 随总验证宽度 $B$ 上升而下降(每步更胖),系统吞吐:
 
-DSpark 把决策推到系统层。对请求 $r$、验证长度 $j$,期望净产出为 $\big(1 + \sum_{i \le j} a_{r,i}\big)$(含重采样),引擎实测的每秒步数记 $SPS(B)$(随总 batch $B$ 增大而下降)。系统吞吐:
+$$\Theta = \hat\tau(B)\cdot SPS(B), \qquad \hat\tau = \mathbb{E}_r\big[1+\textstyle\sum_j a_{r,j}\big]$$
 
-$$\Theta = \tau_{\text{eff}} \cdot SPS(B)$$
+调度器以 $\Theta$ 为目标贪心分配每条请求的验证宽度:高置信请求押深($a_{r,j}$ 缓降),低置信早验。生产(DeepSeek-V4)验证预算从 MTP-1 静态 2 动态扩到 4-6 token;同等吞吐 per-user +60~85%(V4-Flash)、+57~78%(V4-Pro);80 tok/s/user SLA 下系统吞吐 +51%。**这就是推论 2 的工程闭环:负载和深浅一起调度,而不是全局一个 $\gamma$。**
 
-调度器以 $\Theta$ 为目标,贪心地为每条请求选择验证长度——高置信请求押深(生存概率 $a_{r,j}$ 缓降),低置信请求早验。生产环境(DeepSeek-V4)中,验证预算从 MTP-1 的静态 2 token 动态扩展到 4-6 token,同等吞吐下 per-user 速度提升 60-85%(V4-Flash)、57-78%(V4-Pro);80 tok/s/user 的 SLA 下系统吞吐 +51%。
+## 六、实测记分牌(论文原生数字)
 
-## 六、实测记分牌:论文原生的数字
+接受长度(DSpark 论文 Table 1,九基准平均):
 
-接受长度(每轮平均接受 token 数,DSpark 论文 Table 1,Qwen3 三个尺寸 × 九个基准平均):
+![DSpark 4.95-5.00 vs EAGLE-3 3.68-3.80 vs DFlash 4.26-4.29](images/figR1_accept.png)
 
-![DSpark 4.95-5.00,EAGLE-3 3.68-3.80,DFlash 4.26-4.29;DSpark 比 EAGLE-3 高 27-31%](images/figR1_accept.png)
+位置衰减(同论文 Figure 2,Qwen3-4B):
 
-后缀衰减(同论文 Figure 2,Qwen3-4B):
+![dFlash 块尾掉到 0.63-0.78;EAGLE-3 前低后高;DSpark 全程平稳](images/figR2_decay.png)
 
-![DFlash 块尾接受率掉到 0.63-0.78;EAGLE-3 反而前低后高;DSpark 全程平稳](images/figR2_decay.png)
+EAGLE-3 的"前低后高"值得展开:串行 drafter 首位置要吸收上下文、越猜越准;块并行首位置最准、越往后越散——两条路线的本质差异在数据上的指纹,同向交叉。
 
-值得注意 EAGLE-3 的"前低后高":串行 drafter 首位置要吸收上下文、后续越来越准——与块并行的衰减正好相反,这是两条路线的本质差异在数据上的指纹。
+六代公开加速(各论文原生口径):
 
-六代方法的公开加速数字(各自论文/部署报告原生口径):
+![从 2-3× 到生产 +60-85%,口径已标注](images/figR3_speed.png)
 
-![从 Speculative Sampling 2-3× 到 DSpark 生产环境 60-85%,口径差异已标注](images/figR3_speed.png)
-
-**一个必要的警告**:这些数字不可直接横比。离线低并发基准、生产同等吞吐对比、端侧实测——三种口径的基线、batch、SLA 各不相同。横比图只能看量级,不能排名次。
+**口径警告**:离线低并发基准、生产同吞吐对比、端侧实测,三种口径不可直接横比——横比看量级,不排名次。
 
 ## 七、工程选择指南
 
-按 Jetson AI Lab 的官方建议与生态现状:
+- 模型自带 MTP 权重 → 开 MTP,depth 3 起步(零成本 2-3×)
+- 要最广 checkpoint / llama.cpp → dFlash,depth 15 起步
+- vLLM + 极限吞吐 → DSpark,depth 4 起步(llama.cpp 暂不支持)
+- 自训模型 → EAGLE-3 管线最成熟
 
-- **模型自带 MTP 权重**(Qwen3、GLM-4.5、DeepSeek-V3/R1 系):直接开 MTP,depth 从 3 起步——零额外成本,2-3×;
-- **要最广 checkpoint 生态 / 必须用 llama.cpp**:DFlash,depth 从 15 起步;
-- **vLLM + 追求极限吞吐**:DSpark,depth 从 4 起步(注意目前 llama.cpp 不支持);
-- **研究/自定义模型**:EAGLE-3 是最成熟的训练管线。
+铁律:draft 必须与 target **精确变体**配对;接受率在真实 prompt 分布上实测;depth 在自己负载下调优——高并发场景注意 §1.2 推论 2,必要时让框架的动态开关干活。
 
-三条工程铁律:草稿器必须与 target 的**精确变体**配对(量化、尺寸、架构变了就要重配);接受率要在自己的真实 prompt 分布上实测;depth 不是越大越快,务必在自己的负载下调优。
+## 八、总结:一个内核,三个维度
 
-## 八、总结:一条主线,四个维度
+$$\underbrace{\text{draft \& verify}}_{\text{rejection sampling, 无损}} \times \underbrace{\text{drafter}}_{\text{small} \to \text{head} \to \text{feature} \to \text{MTP} \to \text{block}} \times \underbrace{\text{layout}}_{\text{chain} \to \text{tree} \to \text{block}} \times \underbrace{\text{depth}}_{\text{static} \to \text{adaptive}}$$
 
-$$\underbrace{\text{draft \& verify}}_{\text{rejection sampling, 无损}} \times \underbrace{\text{drafter}}_{\text{small} \to \text{head} \to \text{feature} \to \text{MTP} \to \text{block}} \times \underbrace{\text{candidate layout}}_{\text{chain} \to \text{tree} \to \text{block}} \times \underbrace{\text{depth control}}_{\text{static} \to \text{adaptive}}$$
+即:**猜-验内核**(三行证明保证无损)× **草稿结构**(旁听→嫁接→血脉相连→独立配对)× **候选组织**(链的指数衰减→树的总有一条路→块的深度零延迟)× **深度调度**(全局固定→逐请求置信×硬件联合调度)。物理本质一句话——
 
-即:**猜-验内核**(rejection sampling 保证无损)× **草稿结构**(小模型→解码头→特征→MTP→块)× **候选组织**(链→树→块)× **深度调度**(静态→自适应)。
+$$\text{speedup} = \frac{\text{idle compute, now used}}{\text{memory traffic saved}}$$
 
-- 数学上,加速是**无损的**:rejection sampling 三行证明保证输出分布恒等于大模型;
-- 结构上,演进方向是**让草稿越来越懂大模型**:从旁听(冻结嫁接)到血脉相连(联合预训练)再到每层注入(独立配对);
-- 组织上,从链的指数衰减,到树的"总有一条路走得远",到块的深度零延迟;
-- 调度上,从全局固定 $\gamma$ 到逐请求的置信调度 + 硬件感知。
-
-下一代故事已经在发生:Muon 等训练侧优化器与推理侧投机解码正在合流,树系与块系的对决才打到中盘。唯一确定的是那条底层公式——
-
-$$\text{speedup} = \frac{\text{compute that was idle, now used}}{\text{memory traffic saved}}$$
-
-以及那个三行证明保证的承诺:**快,但不牺牲任何一个 token 的正确性。**
+树系与块系的对决打到中盘,训练侧与推理侧的合流刚刚开始。唯一不变的是那个三行证明的承诺:**快,不牺牲任何一个 token 的正确性。**
 
 ---
 
-*参考:Leviathan et al. 2023《Fast Inference from Transformers via Speculative Decoding》;Chen et al. 2023《Accelerating LLM Decoding with Speculative Sampling》;Cai et al. 2024《Medusa》;Li et al. 2024《EAGLE / EAGLE-2 / EAGLE-3》;Gloeckle et al. 2024《Better & Faster LLMs via Multi-token Prediction》;DeepSeek-AI 2024《DeepSeek-V3 Technical Report》;Chen et al. 2024《Sequoia》;Cheng et al. 2026《DSpark: Confidence-Scheduled Speculative Decoding》(arXiv:2607.05147);Kai et al. 2024《AdaEDL》;Jetson AI Lab《Speculative Decoding on Jetson》*
+*参考:Leviathan et al. 2023;Chen et al. 2023(Speculative Sampling);Cai et al. 2024(Medusa);Li et al. 2024-25(EAGLE 1-3);Gloeckle et al. 2024(MTP);DeepSeek-AI 2024(V3 报告);Chen et al. 2024(Sequoia);Cheng et al. 2026(DSpark, arXiv:2607.05147);Kai et al. 2024(AdaEDL);Jetson AI Lab(Speculative Decoding on Jetson)*
