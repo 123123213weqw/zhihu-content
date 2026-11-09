@@ -191,7 +191,7 @@ def figD_dflash():
     for i in range(6):
         cell(ax, 0.5 + i * 1.05, 17.2, "$\\cdot$", ec="#999999", fs=8)
     cell(ax, 0.5 + 6 * 1.05, 17.2, "A", ec=DGREEN, fc="#eef7ee", fs=8.5)
-    ax.text(0.5 + 6.55, 18.55, "anchor", fontsize=7.5, color=DGREEN, ha="center")
+    ax.text(7.3, 18.55, "anchor", fontsize=7.5, color=DGREEN, ha="center")
     for i in range(8):
         rrect(ax, 8.0 + i * 0.72, 17.2, 0.7, 1.0, "#999999", ls=(0, (2, 2)), lw=0.8)
     ax.text(10.9, 16.55, "下一块(待生成 $\\gamma=8$)", fontsize=7.5, ha="center", color="#666666")
@@ -201,25 +201,26 @@ def figD_dflash():
     rrect(ax, 0.4, 9.6, 13.7, 5.8, DBLUE, "white", lw=1.2)
     ax.text(0.7, 14.85, "② DFlash 草稿器(block diffusion):一次前向,并行输出整块",
             fontsize=9.5)
-    # input row: anchor + masks
+    # input row: anchor + masks (label centered above the row)
     cell(ax, 1.2, 12.6, "A", ec=DGREEN, fc="#eef7ee", fs=8.5)
     for i in range(8):
         cell(ax, 2.5 + i * 1.05, 12.6, "?", ec="#aaaaaa", fs=8.5, tc="#999999")
-    ax.text(1.75, 11.9, "输入:anchor + $\\gamma$ 个掩码位", fontsize=8, color="#555555")
+    ax.text(1.2, 13.8, "输入:anchor + $\\gamma$ 个掩码位", fontsize=7.5, color="#555555",
+            ha="left", va="bottom")
     # parallel arrow band
     for i in range(8):
         arr(ax, 3.0 + i * 1.05, 12.4, 3.0 + i * 1.05, 11.1, color=DBLUE, lw=0.9, ms=9)
-    # draft output row
+    # draft output row (label right-aligned to row center)
     for i in range(8):
         cell(ax, 2.5 + i * 1.05, 10.0, f"$d_{{{i+1}}}$", ec=DBLUE, fs=8.5)
-    ax.text(1.75, 10.5, "草稿块", fontsize=8, color="#555555", va="center")
+    ax.text(2.2, 10.5, "草稿块", fontsize=8, color="#555555", va="center", ha="right")
     # KV injection (right side, inside frame with breathing room)
     rrect(ax, 12.3, 10.0, 1.55, 2.2, "#888888", "#f2f2f2", lw=0.9)
     ax.text(13.07, 11.1, "target\n隐状态\n(KV 注入)", fontsize=7.2, ha="center",
             va="center", linespacing=1.4)
     arr(ax, 12.25, 11.1, 11.75, 11.1, color="#888888")
-    ax.text(9.0, 11.75, "同时输出(非自回归)", fontsize=7.5, color=DBLUE,
-            va="center", ha="center")
+    ax.text(12.55, 13.3, "同时输出\n(非自回归)", fontsize=7.5, color=DBLUE,
+            va="center", ha="center", linespacing=1.5)
 
     # ---------- layer 3: target verify ----------
     arr(ax, 7, 9.5, 7, 8.7)
@@ -230,12 +231,12 @@ def figD_dflash():
         verdict = "✓" if i < 5 else ("✗" if i == 5 else "—")
         c = DGREEN if i < 5 else (DRED if i == 5 else "#bbbbbb")
         cell(ax, 1.2 + i * 1.05, 5.8, verdict, ec=c, fs=8.5)
-    ax.text(1.75, 6.95, "判决", fontsize=8, color="#555555", va="center")
+    ax.text(0.9, 6.3, "判决", fontsize=8, color="#555555", va="center", ha="right")
     ax.plot([6.85, 6.85], [5.4, 7.3], ls=(0, (3, 2)), lw=1.1, color=DRED)
     arr(ax, 6.85, 5.55, 6.85, 4.75, color=DORANGE)
     cell(ax, 6.35, 3.85, "重采", ec=DORANGE, fc="#fdf9e8", fs=7.5)
-    ax.text(10.2, 4.85, "前缀 5 个接受;第 6 个按 $p_{\\mathrm{target}}$ 重采样;\n其后草稿全部丢弃",
-            fontsize=8, va="center", linespacing=1.6)
+    ax.text(10.6, 4.9, "前缀 5 个接受\n第 6 个按 $p_{\\mathrm{target}}$ 重采样\n其后草稿全部丢弃",
+            fontsize=7.5, va="center", ha="left", linespacing=1.6)
 
     # ---------- layer 4: append & loop ----------
     arr(ax, 6.85, 3.75, 6.85, 2.95, color=DORANGE)          # resample -> layer4
