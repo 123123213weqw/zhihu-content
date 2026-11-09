@@ -512,3 +512,106 @@ def figF_adaptive():
 
     fig.tight_layout(w_pad=2.2)
     fig.savefig(f"{OUT}/figF_adaptive.png"); plt.close(fig)
+
+
+# ================================================================ fig G
+def figG_drafter():
+    """How the four drafter families attach to / train with the target model."""
+    fig, axes = plt.subplots(2, 2, figsize=(7.4, 6.6))
+
+    def backbone(ax, x, y, w=2.2, label="target 主干", n_layers=3):
+        for i in range(n_layers):
+            rrect(ax, x, y + i * 0.62, w, 0.52, "#999999", "#ececec", lw=0.8)
+        ax.text(x + w / 2, y + n_layers * 0.62 + 0.16, label, fontsize=7,
+                ha="center", va="bottom", color="#555555")
+        return y + n_layers * 0.62
+
+    def tok(ax, x, y, s, color=DGREEN):
+        rrect(ax, x - 0.55, y - 0.3, 1.1, 0.6, color)
+        ax.text(x, y, s, ha="center", va="center", fontsize=7)
+
+    # ---------------- (a) MTP ----------------
+    ax = axes[0][0]; ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    ax.set_title("(a) MTP:预训练时焊在身上", fontsize=9, pad=4)
+    top = backbone(ax, 0.7, 3.2)
+    arr(ax, 1.8, top, 1.8, 6.0, "#777777")
+    ax.text(3.0, 5.5, "$h$ 特征", fontsize=6.5, color="#777777", ha="left", va="center")
+    rrect(ax, 0.7, 6.0, 2.2, 0.7, "#777777", "#f4f4f4", lw=0.8)
+    ax.text(1.8, 6.35, "MLP 融合", ha="center", va="center", fontsize=7)
+    rrect(ax, 0.7, 7.0, 2.2, 0.8, DGREEN, "#eaf4ea", lw=1.1)
+    ax.text(1.8, 7.4, "MTP 层 ×1", ha="center", va="center", fontsize=7.5)
+    arr(ax, 1.8, 6.95, 1.8, 6.75, "#777777", ms=10, lw=0.9)
+    rrect(ax, 4.4, 7.0, 1.6, 0.7, "#555555", "#eeeeee", lw=0.8)
+    ax.text(5.2, 7.35, "LM head", ha="center", va="center", fontsize=7)
+    arr(ax, 2.95, 7.4, 4.35, 7.35, DGREEN, ms=10, lw=0.9)
+    ax.text(3.65, 7.65, "共享", fontsize=6.5, color="#888888", ha="center")
+    arr(ax, 5.2, 6.95, 5.2, 6.5, DGREEN, ms=10, lw=0.9)
+    tok(ax, 5.2, 6.1, "$t{+}2$")
+    tok(ax, 1.8, 2.2, "$t{+}1$")
+    arr(ax, 1.8, 3.15, 1.8, 2.6, "#777777", ms=10, lw=0.9)
+    ax.text(3.05, 2.75, "主干自己的头", fontsize=6.5, color="#888888", ha="left", va="center")
+    ax.annotate("", xy=(0.55, 9.3), xytext=(6.4, 9.3),
+                arrowprops=dict(arrowstyle="<->", lw=0.9, color=DGREEN, ls=(0, (3, 2))))
+    ax.text(3.5, 9.5, "联合预训练(梯度共享)", fontsize=7, color=DGREEN, ha="center")
+    ax.text(5.0, 0.9, "出厂自带,配置 1 层\nDeepSeek-V3 ≈1.8×", fontsize=7,
+            color="#555555", ha="center", linespacing=1.6)
+
+    # ---------------- (b) Medusa ----------------
+    ax = axes[0][1]; ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    ax.set_title("(b) Medusa:训完再嫁接", fontsize=9, pad=4)
+    top = backbone(ax, 3.4, 3.6, label="target 主干(冻结→微调)")
+    for i, tok_s in enumerate(["$t{+}1$", "$t{+}2$", "$t{+}3$"]):
+        x0 = 0.6 + i * 2.9
+        arr(ax, x0 + 1.1, top, x0 + 1.1, 6.7, "#aaaaaa", ms=10, lw=0.9)
+        rrect(ax, x0, 6.7, 2.2, 0.75, DBLUE, "#eef4fa", lw=1.0)
+        ax.text(x0 + 1.1, 7.08, f"解码头 {i+1}", ha="center", va="center", fontsize=7)
+        arr(ax, x0 + 1.1, 6.65, x0 + 1.1, 5.9, DBLUE, ms=10, lw=0.9)
+        tok(ax, x0 + 1.1, 5.5, tok_s, DBLUE)
+    ax.text(5.0, 1.1, "Medusa-1 只训头,Medusa-2 解冻微调\n≈2–3×", fontsize=7,
+            color="#555555", ha="center", linespacing=1.6)
+
+    # ---------------- (c) EAGLE ----------------
+    ax = axes[1][0]; ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    ax.set_title("(c) EAGLE:旁听主干特征", fontsize=9, pad=4)
+    top = backbone(ax, 0.7, 3.8, label="target 主干(冻结)")
+    arr(ax, 1.8, top, 1.8, 6.5, "#777777")
+    ax.text(3.0, 5.6, "倒数第 2 层特征", fontsize=6.5, color="#777777",
+            ha="left", va="center")
+    rrect(ax, 0.7, 6.5, 2.2, 0.8, DRED, "#fdeeee", lw=1.1)
+    ax.text(1.8, 6.9, "drafter 单层", ha="center", va="center", fontsize=7.5)
+    rrect(ax, 4.3, 6.5, 1.7, 0.8, "#555555", "#eeeeee", lw=0.8)
+    ax.text(5.15, 6.9, "LM head", ha="center", va="center", fontsize=7)
+    ax.text(5.15, 7.5, "(借主干)", fontsize=6.5, ha="center", color="#888888")
+    arr(ax, 2.95, 6.9, 4.25, 6.9, DRED, ms=10, lw=0.9)
+    ax.text(3.6, 7.2, "预测特征", fontsize=6.5, color=DRED, ha="center", va="bottom")
+    arr(ax, 5.15, 6.45, 5.15, 5.7, DRED, ms=10, lw=0.9)
+    tok(ax, 5.15, 5.3, "token", DRED)
+    ax.plot([5.7, 6.9], [5.3, 5.3], color=DRED, lw=0.9)
+    ax.plot([6.9, 6.9], [5.3, 6.9], color=DRED, lw=0.9)
+    arr(ax, 6.9, 6.9, 2.95, 6.9, DRED, ms=10, lw=0.9)
+    ax.text(6.6, 4.95, "自回归循环", fontsize=6.5, color=DRED, ha="center")
+    ax.text(5.0, 1.1, "两阶段训练:特征蒸馏 + 自采样\n≈3–4×", fontsize=7,
+            color="#555555", ha="center", linespacing=1.6)
+
+    # ---------------- (d) dFlash ----------------
+    ax = axes[1][1]; ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    ax.set_title("(d) dFlash:独立配对重训", fontsize=9, pad=4)
+    top = backbone(ax, 0.6, 3.6)
+    rrect(ax, 5.4, 3.6, 3.8, 4.6, DBLUE, "white", lw=1.1)
+    ax.text(7.3, 8.45, "drafter(独立多层)", fontsize=7.5, ha="center", color=DBLUE)
+    for i in range(4):
+        rrect(ax, 5.8, 4.0 + i * 0.85, 3.0, 0.62, "#5a8fc0", "#eef4fa", lw=0.7)
+    for yy in (4.31, 5.16, 6.01, 6.86):
+        arr(ax, 2.85, min(yy, top - 0.3), 5.75, yy, "#999999", ms=8, lw=0.8)
+    ax.text(2.9, 2.9, "KV 注入\n(隐状态投影进每层)", fontsize=6.5,
+            color="#777777", ha="center", linespacing=1.5)
+    for i, s in enumerate(["A", "?", "?", "?", "?"]):
+        cell(ax, 5.8 + i * 0.62, 2.2, s, ec=DGREEN if i == 0 else "#aaaaaa",
+             fc="#eef7ee" if i == 0 else "white", fs=6.5, tc="#111111" if i == 0 else "#999999")
+    arr(ax, 7.3, 3.45, 7.3, 3.0, DBLUE, ms=10, lw=0.9)
+    ax.text(8.85, 2.65, "一次并行出块", fontsize=6.8, color=DBLUE, ha="center")
+    ax.text(5.0, 0.9, "on-policy 填空训练,专机专用\n块并行,深草稿;DSpark 再加串行修正", fontsize=7,
+            color="#555555", ha="center", linespacing=1.6)
+
+    fig.tight_layout(h_pad=1.6, w_pad=1.8)
+    fig.savefig(f"{OUT}/figG_drafter.png"); plt.close(fig)
