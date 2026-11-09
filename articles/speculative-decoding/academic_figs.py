@@ -333,3 +333,85 @@ if __name__ == "__main__":
     figR2_decay(); print("figR2 ok")
     figR3_speed(); print("figR3 ok")
     print("->", OUT)
+
+
+# ================================================================ fig E
+def figE_tree():
+    """Draft tree + tree attention: top-k expansion, one forward verifies the
+    whole tree, longest accepted path wins. Panel (b) shows the ancestor-only
+    attention mask."""
+    import matplotlib.colors as mcolors
+
+    fig, (ax, axm) = plt.subplots(1, 2, figsize=(7.2, 3.6),
+                                  gridspec_kw={"width_ratios": [1.15, 1]})
+
+    # ---------- (a) draft tree ----------
+    ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
+    # node: (x, y, token, p, accepted?)
+    nodes = {
+        "root": (5.0, 8.8, "…本质", None, True),
+        1: (2.6, 6.6, "是", .42, True),  2: (5.0, 6.6, "为", .31, False),  3: (7.4, 6.6, "在", .15, False),
+        4: (1.6, 4.4, "拟", .28, True),  5: (3.6, 4.4, "一", .09, False),
+        6: (6.2, 4.4, "拟", .12, False), 7: (8.4, 4.4, "于", .11, False),
+        8: (1.1, 2.2, "合", .21, True),  9: (2.3, 2.2, "构", .05, False), 10: (6.2, 2.2, "合", .08, False),
+    }
+    edges = [("root", 1, True), ("root", 2, False), ("root", 3, False),
+             (1, 4, True), (1, 5, False), (2, 6, False), (3, 7, False),
+             (4, 8, True), (4, 9, False), (6, 10, False)]
+    for a, b, acc in edges:
+        xa, ya = nodes[a][0], nodes[a][1]; xb, yb = nodes[b][0], nodes[b][1]
+        ax.plot([xa, xb], [ya - 0.28, yb + 0.32],
+                color=DGREEN if acc else "#bbbbbb", lw=1.6 if acc else 0.8,
+                zorder=1)
+        pb = nodes[b][3]
+        if pb is not None:
+            ax.text((xa + xb) / 2 + (0.22 if xb >= xa else -0.22),
+                    (ya + yb) / 2, f"{pb:.2f}", fontsize=6.8,
+                    color=DGREEN if acc else "#aaaaaa",
+                    ha="left" if xb >= xa else "right", va="center")
+    for key, (x, y, tok, p, acc) in nodes.items():
+        if key == "root":
+            ec, fc = "#555555", "#eeeeee"
+        else:
+            ec, fc = (DGREEN, "#eaf4ea") if acc else ("#999999", "white")
+        rrect(ax, x - 0.62, y - 0.32, 1.24, 0.66, ec, fc, lw=1.1 if acc else 0.8)
+        ax.text(x, y, tok, ha="center", va="center", fontsize=8.5,
+                color="#111111" if acc else "#777777")
+    ax.text(0.2, 9.6, "(a) draft 树:每层保留 top-$k$ 候选", fontsize=9)
+    ax.annotate("", xy=(1.1, 1.15), xytext=(5.0, 8.4),
+                arrowprops=dict(arrowstyle="-", lw=0))  # spacer
+    ax.text(5.0, 0.6, "绿色 = 本轮被接受的最长路径($\\tau{=}4$)", fontsize=8,
+            ha="center", color=DGREEN)
+    ax.text(5.0, 0.15, "灰色节点同轮验证后丢弃", fontsize=7.5, ha="center", color="#999999")
+
+    # ---------- (b) tree attention mask ----------
+    order = ["root", 1, 4, 8, 9, 5, 2, 6, 10, 3, 7]   # DFS order
+    parent = {"root": None, 1: "root", 2: "root", 3: "root", 4: 1, 5: 1,
+              6: 2, 7: 3, 8: 4, 9: 4, 10: 6}
+    n = len(order)
+    M = np.zeros((n, n))
+    idx = {k: i for i, k in enumerate(order)}
+    for k in order:
+        anc, cur = [], k
+        while parent[cur] is not None:
+            cur = parent[cur]; anc.append(cur)
+        M[idx[k], [idx[a] for a in anc]] = 1
+        M[idx[k], idx[k]] = 1
+    axm.imshow(M, cmap=mcolors.ListedColormap(["#f4f4f4", "#4477AA"]),
+               aspect="equal", interpolation="nearest")
+    axm.set_xticks(range(n)); axm.set_yticks(range(n))
+    axm.set_xticklabels(["r"] + [str(i) for i in range(1, 11)], fontsize=6.5)
+    axm.set_yticklabels(["r"] + [str(i) for i in range(1, 11)], fontsize=6.5)
+    axm.set_xlabel("key(被看见的位置)", fontsize=8.5)
+    axm.set_ylabel("query(当前位置)", fontsize=8.5)
+    axm.set_title("(b) 树注意力 mask:只看祖先", fontsize=9, pad=6)
+    # highlight accepted-path rows (nodes 1, 4, 8 at DFS positions 1, 2, 3)
+    for i in (1, 2, 3):
+        axm.add_patch(Rectangle((-0.5, i - 0.5), n, 1.0, fill=False,
+                                ec=DGREEN, lw=1.4, zorder=5))
+    axm.text(n - 0.5, 4.3, "绿框行 = 接受路径节点", fontsize=7,
+             color=DGREEN, ha="right", va="bottom")
+    axm.tick_params(length=1.5)
+
+    fig.tight_layout()
+    fig.savefig(f"{OUT}/figE_tree.png"); plt.close(fig)
