@@ -231,19 +231,19 @@ def figD_dflash():
         verdict = "✓" if i < 5 else ("✗" if i == 5 else "—")
         c = DGREEN if i < 5 else (DRED if i == 5 else "#bbbbbb")
         cell(ax, 1.2 + i * 1.05, 5.8, verdict, ec=c, fs=8.5)
-    ax.text(0.9, 6.3, "判决", fontsize=8, color="#555555", va="center", ha="right")
-    ax.plot([6.85, 6.85], [5.4, 7.3], ls=(0, (3, 2)), lw=1.1, color=DRED)
-    arr(ax, 6.85, 5.55, 6.85, 4.75, color=DORANGE)
-    cell(ax, 6.35, 3.85, "重采", ec=DORANGE, fc="#fdf9e8", fs=7.5)
-    ax.text(10.6, 4.9, "前缀 5 个接受\n第 6 个按 $p_{\\mathrm{target}}$ 重采样\n其后草稿全部丢弃",
-            fontsize=7.5, va="center", ha="left", linespacing=1.6)
+    ax.text(1.2, 7.0, "判决", fontsize=7.5, color="#555555", ha="left", va="bottom")
+    ax.plot([7.5, 7.5], [5.4, 7.3], ls=(0, (3, 2)), lw=1.1, color=DRED)
+    arr(ax, 6.95, 5.55, 6.95, 4.75, color=DORANGE)
+    cell(ax, 6.45, 3.85, "重采", ec=DORANGE, fc="#fdf9e8", fs=7.5)
+    ax.text(8.6, 4.9, "前缀 5 接受,第 6 重采样,其后丢弃", fontsize=7.5,
+            va="center", ha="left")
 
     # ---------- layer 4: append & loop ----------
     arr(ax, 6.85, 3.75, 6.85, 2.95, color=DORANGE)          # resample -> layer4
     ax.text(0.2, 2.35, "④ 确认 6 个 token 并入序列,末位 $A'$ 成为下一块的 anchor",
             fontsize=9.5)
     for i in range(6):
-        cell(ax, 0.5 + i * 1.05, 0.7, "$\\cdot$" if i < 5 else "$A'$", ec=DGREEN, fs=8)
+        cell(ax, 0.5 + i * 1.05, 0.7, "" if i < 5 else "$A'$", ec=DGREEN, fs=8)
     # true loop arrow back to layer 1
     ax.plot([8.6, 14.7], [1.2, 1.2], ls=(0, (4, 3)), lw=1.1, color=DGREEN)
     ax.plot([14.7, 14.7], [1.2, 17.7], ls=(0, (4, 3)), lw=1.1, color=DGREEN)
