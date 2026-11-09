@@ -79,9 +79,9 @@ $$Z \triangleq \Pr(\text{reject}) = 1 - \sum_x q(x)\min\left(1,\frac{p(x)}{q(x)}
 
 样本 $x$ 最终被产出,走的是两条互斥路径:直接接受,或全体拒绝后重采到 $x$:
 
-$$\Pr(x) = \underbrace{\min\big(q(x),\, p(x)\big)}_{\text{直接接受}} + \underbrace{Z \cdot r(x)}_{\text{拒绝重采}}$$
+$$\Pr(x) = \underbrace{\min\big(q(x),\, p(x)\big)}_{\text{accept}} + \underbrace{Z \cdot r(x)}_{\text{reject \& resample}}$$
 
-分情况。当 $p(x) \ge q(x)$:有 $r(x) = \frac{p(x)-q(x)}{Z}$,于是
+(第一项是"直接接受"的概率,第二项是"全体拒绝后重采到 $x$"的概率。)分情况。当 $p(x) \ge q(x)$:有 $r(x) = \frac{p(x)-q(x)}{Z}$,于是
 
 $$\Pr(x) = q(x) + Z\cdot\frac{p(x)-q(x)}{Z} = p(x)$$
 
@@ -200,11 +200,11 @@ DSpark(北大 & DeepSeek,arXiv:2607.05147)在 DFlash 骨干上打三个补丁:
 
 **树**:每层保留 top-$k$ 候选扇出。一次前向并行验证整棵树的武器是**树注意力**:树中每个位置只 attend 自己的祖先路径。设树 $T$ 的节点集,对节点 $v$:
 
-$$\text{mask}(v, u) = \mathbb{1}[u \in \text{Anc}(v) \cup \{v\}]$$
+$$\text{mask}(v, u) = \mathbf{1}\left[u \in \text{Anc}(v) \cup \{v\}\right]$$
 
 于是 $\gamma{+}1$ 条互斥路径可以摊平进一个序列一次算完。期望接受长度为"最深全对路径":
 
-$$\mathbb{E}[\tau_{\text{tree}}] = \sum_{d\ge 1} \Pr\left(\exists\;\text{深度} \ge d\;\text{的路径全部被接受}\right)$$
+$$\mathbb{E}[\tau_{\text{tree}}] = \sum_{d\ge 1} \Pr\big(\exists\ \text{an accepted path of depth} \ge d\big)$$
 
 同样验证预算下,树的 $\mathbb{E}[\tau]$ 远高于链——**总有一条路走得远**。谱系:
 
@@ -278,7 +278,9 @@ $$\Theta = \tau_{\text{eff}} \cdot SPS(B)$$
 
 ## 八、总结:一条主线,四个维度
 
-$$\underbrace{\text{猜-验内核}}_{\text{rejection sampling,无损}} \times \underbrace{\text{草稿结构}}_{\text{小模型}\to\text{头}\to\text{特征}\to\text{MTP}\to\text{块}} \times \underbrace{\text{候选组织}}_{\text{链}\to\text{树}\to\text{块}} \times \underbrace{\text{深度调度}}_{\text{静态}\to\text{自适应}}$$
+$$\underbrace{\text{draft \& verify}}_{\text{rejection sampling, 无损}} \times \underbrace{\text{drafter}}_{\text{small} \to \text{head} \to \text{feature} \to \text{MTP} \to \text{block}} \times \underbrace{\text{candidate layout}}_{\text{chain} \to \text{tree} \to \text{block}} \times \underbrace{\text{depth control}}_{\text{static} \to \text{adaptive}}$$
+
+即:**猜-验内核**(rejection sampling 保证无损)× **草稿结构**(小模型→解码头→特征→MTP→块)× **候选组织**(链→树→块)× **深度调度**(静态→自适应)。
 
 - 数学上,加速是**无损的**:rejection sampling 三行证明保证输出分布恒等于大模型;
 - 结构上,演进方向是**让草稿越来越懂大模型**:从旁听(冻结嫁接)到血脉相连(联合预训练)再到每层注入(独立配对);
@@ -287,7 +289,7 @@ $$\underbrace{\text{猜-验内核}}_{\text{rejection sampling,无损}} \times \u
 
 下一代故事已经在发生:Muon 等训练侧优化器与推理侧投机解码正在合流,树系与块系的对决才打到中盘。唯一确定的是那条底层公式——
 
-$$\text{速度} = \frac{\text{闲置算力利用起来了}}{\text{访存次数省下来了}}$$
+$$\text{speedup} = \frac{\text{compute that was idle, now used}}{\text{memory traffic saved}}$$
 
 以及那个三行证明保证的承诺:**快,但不牺牲任何一个 token 的正确性。**
 

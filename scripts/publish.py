@@ -59,6 +59,38 @@ def convert_formulas(html: str) -> str:
     return html
 
 
+FORMULA_MD_RE = re.compile(r"\$\$[\s\S]+?\$\$|\$[^$\n]+?\$")
+
+
+def render_markdown_with_formulas(md: MarkdownIt, body: str) -> str:
+    """Render markdown while protecting formulas from the parser.
+
+    markdown-it treats '_' in LaTeX subscripts (x_{t+1}) as emphasis and tears
+    formulas apart. Extract every formula first, render the markdown with
+    plain placeholders, then substitute Zhihu formula <img> tags back in.
+    """
+    formulas: list[tuple[str, bool]] = []  # (tex, is_block)
+
+    def protect(m: re.Match) -> str:
+        raw = m.group(0)
+        if raw.startswith("$$"):
+            formulas.append((raw[2:-2], True))
+            return f"\n\nXFBLOCKF{len(formulas)-1}FX\n\n"
+        formulas.append((raw[1:-1], False))
+        return f"XFINLINEF{len(formulas)-1}FX"
+
+    html = md.render(FORMULA_MD_RE.sub(protect, body))
+    html = re.sub(
+        r"<p>\s*XFBLOCKF(\d+)FX\s*</p>",
+        lambda m: "<p>" + formula_img(formulas[int(m.group(1))][0].strip()) + "</p>",
+        html)
+    html = re.sub(
+        r"XFINLINEF(\d+)FX",
+        lambda m: formula_img(formulas[int(m.group(1))][0].strip()),
+        html)
+    return html
+
+
 def die(msg: str) -> None:
     print(f"✗ {msg}", file=sys.stderr)
     sys.exit(1)
@@ -155,7 +187,7 @@ def main() -> None:
     topics = [str(t) for t in (meta.get("topics") or [])]
 
     md = MarkdownIt("commonmark", {"typographer": True}).enable("table")
-    html = convert_formulas(md.render(body))
+    html = render_markdown_with_formulas(md, body)
 
     # --- collect local images referenced in the rendered html ---
     local_imgs: list[tuple[str, str]] = []  # (src, rest-of-tag attrs)
