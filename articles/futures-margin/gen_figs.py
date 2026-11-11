@@ -185,3 +185,56 @@ if __name__ == "__main__":
     fig3_spiral(); print("fig3 ok")
     fig4_solvency(); print("fig4 ok")
     print("->", OUT)
+
+
+# ================================================================ fig 5
+def fig5_leverage():
+    """(a) sqrt-T risk slicing: daily settlement vs hold-to-expiry buffer;
+    (b) equity curve of a 10x position: margin-call line vs bankruptcy."""
+    import numpy as np
+    fig, axes = plt.subplots(1, 2, figsize=(7.4, 3.4))
+
+    # (a) sigma * sqrt(T) vs daily sigma
+    ax = axes[0]
+    T = np.linspace(1, 100, 300)
+    sigma = 1.0  # daily vol in %
+    ax.plot(T, sigma * np.sqrt(T), color=DBLUE, lw=1.6,
+            label=r"$\sigma_{\mathrm{daily}}\sqrt{T}$(无每日结算需覆盖)")
+    ax.axhline(sigma, color=DGREEN, lw=1.4, ls="--",
+               label=r"$\sigma_{\mathrm{daily}}$(每日结算只需覆盖)")
+    ax.axhline(10, color=DRED, lw=1.0, ls=":",
+               label="10% 保证金线")
+    ax.annotate(r"$\sqrt{90}\approx 9.5\times$", xy=(90, sigma * np.sqrt(90)),
+                xytext=(48, 4.2), fontsize=9, color=DBLUE,
+                arrowprops=dict(arrowstyle="->", lw=0.9, color=DBLUE))
+    ax.set_xlabel("持仓天数 $T$")
+    ax.set_ylabel("需覆盖的波动(%)")
+    ax.set_ylim(0, 12)
+    ax.legend(fontsize=7.2, loc="lower right")
+    ax.set_title("(a) 每日结算把风险切成单日", fontsize=10, pad=6)
+
+    # (b) equity vs adverse move
+    ax = axes[1]
+    x = np.linspace(0, 14, 300)          # adverse move in %
+    equity = 1 - x / 10                   # 10x leverage, margin=1
+    ax.plot(x, equity, color="#333333", lw=1.6, label="账户权益(保证金倍数)")
+    ax.axhline(0, color="#999999", lw=0.8)
+    ax.axhline(0.7, color=DGREEN, lw=1.2, ls="--", label="维持保证金线(0.7)")
+    mc_x = 10 - 7                         # equity = 0.7 at x = 3%
+    ax.axvline(mc_x, color=DGREEN, lw=1.0, ls=(0, (3, 2)))
+    ax.axvline(10, color=DRED, lw=1.0, ls=(0, (3, 2)))
+    ax.fill_between(x, 0, 1.05, where=x > 10, color="#fdeaea", zorder=0)
+    ax.text(12.0, 0.88, "穿仓区\n(权益为负)", ha="center", fontsize=8,
+            color=DRED, linespacing=1.5)
+    ax.text(mc_x - 0.3, 0.06, "强平点\n逆向 3%", ha="right", fontsize=8,
+            color=DGREEN, linespacing=1.5)
+    ax.text(10.35, -0.42, "保证金\n归零", ha="left", fontsize=8,
+            color="#888888", linespacing=1.5)
+    ax.set_xlabel("价格逆向幅度(%)")
+    ax.set_ylabel("权益 / 初始保证金")
+    ax.set_xlim(0, 14); ax.set_ylim(-0.75, 1.15)
+    ax.legend(fontsize=7.2, loc="upper right")
+    ax.set_title("(b) 10 倍杠杆的强平与穿仓", fontsize=10, pad=6)
+
+    fig.tight_layout(w_pad=2.4)
+    fig.savefig(f"{OUT}/fig5_leverage.png"); plt.close(fig)
