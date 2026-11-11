@@ -1,11 +1,11 @@
 ---
 title: 你只出 1 万,却控制 10 万合约:谁借给你那 9 万?——期货保证金与系统性风险全景
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2103908700620583535
+id: 2103908700620583535
 created: 2026-11-11
-published:
+published: 2026-11-11
 tags: [finance, futures, margin, systemic-risk]
 ---
 
