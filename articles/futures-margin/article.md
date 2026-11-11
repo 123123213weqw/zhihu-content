@@ -2,8 +2,8 @@
 title: 你只出 1 万,却控制 10 万合约:谁借给你那 9 万?——期货保证金与系统性风险全景
 topics: []
 status: published
-url: https://zhuanlan.zhihu.com/p/2103908700620583535
-id: 2103908700620583535
+url: https://zhuanlan.zhihu.com/p/2103917388458733754
+id: 2103917388458733754
 created: 2026-11-11
 published: 2026-11-11
 tags: [finance, futures, margin, systemic-risk]
@@ -33,7 +33,9 @@ tags: [finance, futures, margin, systemic-risk]
 
 区别的实质:银行贷款场景里,你真的**买下了** 10 万元的资产,缺口的 9 万是银行替你垫付的真实资金,所以你要付利息。期货场景里,你没有买任何东西——你**签了一份合约**,承诺未来按约定价格交割,保证金只是你履约能力的**押金**(collateral)。
 
-$$\text{保证金比例} = \frac{\text{保证金}}{\text{合约名义价值}}, \qquad \text{杠杆倍数} = \frac{1}{\text{保证金比例}}$$
+记保证金比例为 $m$、杠杆倍数为 $L$:
+
+$$m = \frac{\text{margin}}{\text{notional}}, \qquad L = \frac{1}{m}$$
 
 10% 保证金 = 10 倍杠杆。杠杆不是"借了钱",而是"用小额押金撬动了大额名义敞口"——你盈亏的**计算基数**是那 10 万,但你**占用的资金**只有 1 万。这个分离有个专业名字:**名义本金(Notional Value)与实际资金占用的分离**,它是全部衍生品市场的第一性原理。
 
@@ -72,11 +74,11 @@ $$\text{保证金比例} = \frac{\text{保证金}}{\text{合约名义价值}}, \
 
 如果没有每日结算、持有到期一次性结清,保证金必须扛住 90 天的累计波动。价格近似随机游走,波动按 $\sqrt{T}$ 累积:
 
-$$\sigma_{T\text{天}} = \sigma_{\text{日}} \cdot \sqrt{T} \;\Rightarrow\; \sigma_{90\text{天}} \approx 9.5 \times \sigma_{\text{日}}$$
+$$\sigma_T = \sigma_{\text{daily}} \cdot \sqrt{T} \;\Rightarrow\; \sigma_{T=90} \approx 9.5\,\sigma_{\text{daily}}$$
 
 黄金日波动 1% → 90 天累计 ~9.5% → 保证金得收 20-30% 才安全。而有了每日结算:每天收盘盈亏当场结清,浮亏立刻从保证金扣除,**亏损根本没有机会累积到第二天**——还没累积,就已经用现金结掉了。保证金只需要覆盖**一天**的波动加缓冲:
 
-$$\text{无结算:需覆盖 } z\,\sigma_{\text{日}}\sqrt{T} \qquad \text{每日结算:只需 } z\,\sigma_{\text{日}} + \text{buffer}$$
+$$\text{no settlement: } z\,\sigma_{\text{daily}}\sqrt{T} \qquad \text{daily settlement: } z\,\sigma_{\text{daily}} + \text{buffer}$$
 
 90 天合约,两者相差 $\sqrt{90} \approx 9.5$ 倍——**这正好解释了为什么 10% 这个数量级"恰好"够用**:不是市场慷慨,是每日结算制度把保证金需求压缩了一个 $\sqrt{T}$ 量级。
 
@@ -102,7 +104,7 @@ $$\text{无结算:需覆盖 } z\,\sigma_{\text{日}}\sqrt{T} \qquad \text{每日
 
 账户权益 = 保证金 − 浮动亏损。10 倍杠杆、1 万保证金、10 万名义多头,价格逆向 $x$% 后:
 
-$$\text{权益} = 10{,}000 - 100{,}000 \times x\%$$
+$$E(x) = 10{,}000 - 100{,}000 \cdot x\%$$
 
 初始保证金 10%(名义),维持保证金设 7%(名义)——权益跌破维持线,期货公司**强制平仓**,这就是爆仓的严格含义:
 
@@ -134,11 +136,13 @@ $$10{,}000 - 1000x \le 7{,}000 \;\Rightarrow\; x \ge 3\%$$
 
 **是对手方付的。** 期货(不考虑手续费)是严格的零和博弈:
 
-$$\text{多头总盈利} + \text{空头总盈利} = 0$$
+记多空双方的总盈利为 $W_{\text{long}}$、$W_{\text{short}}$:
+
+$$W_{\text{long}} + W_{\text{short}} = 0$$
 
 你做多 10 万黄金期货,价格涨 5%:
 
-$$100{,}000 \times 5\% = 5{,}000 \text{ 元盈利}$$
+$$100{,}000 \times 5\% = 5{,}000 \;\text{CNY}$$
 
 这 5000 元不是交易所凭空造的,也不是银行垫的,而是市场上相应空头的亏损,通过**每日无负债结算(Mark-to-Market)**每天从空头账户划到你的账户。反过来价格跌 5%,你亏 5000,同样当日结清。
 

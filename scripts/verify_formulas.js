@@ -27,6 +27,12 @@ formulas.forEach((tex, i) => {
     console.log(`FAIL [${i}] ${tex.slice(0, 90)}`);
     console.log(`      -> ${String(e.message).slice(0, 140)}`);
   }
+  // Zhihu's formula engine cannot render CJK inside \text{} (and plain CJK);
+  // enforce ASCII-only formulas so this never reaches production again.
+  if (/[\u0080-\uFFFF]/.test(tex)) {
+    fail++;
+    console.log(`FAIL [${i}] non-ASCII in formula (Zhihu cannot render CJK): ${tex.slice(0, 90)}`);
+  }
 });
 console.log(`\n${formulas.length} formulas checked, ${fail} failed`);
 process.exit(fail ? 1 : 0);
