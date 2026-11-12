@@ -1,11 +1,11 @@
 ---
 title: 为什么"有钱"的公司会 48 小时猝死?——流动性灾难通俗全解:钱去哪了
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2104281030639335151
+id: 2104281030639335151
 created: 2026-11-12
-published:
+published: 2026-11-12
 tags: [finance, liquidity, crisis, bank-run]
 ---
 

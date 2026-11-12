@@ -171,6 +171,7 @@ def main() -> None:
     ap.add_argument("article", help="path to article.md")
     ap.add_argument("--dry-run", action="store_true", help="render only, no upload/publish")
     ap.add_argument("--force", action="store_true", help="republish even if status is published")
+    ap.add_argument("--column", default=None, help="column (zhuanlan) id to publish into")
     args = ap.parse_args()
 
     path = Path(args.article).resolve()
@@ -180,6 +181,7 @@ def main() -> None:
 
     meta, body = split_frontmatter(path.read_text(encoding="utf-8"))
     title = str(meta.get("title") or "").strip()
+    column = args.column or meta.get("column") or None
     if not title:
         die("frontmatter 'title' is required")
     if meta.get("status") == "published" and not args.force:
@@ -250,6 +252,10 @@ def main() -> None:
     client.close()
 
     print(f"\n✓ Published: {url}")
+    if column:
+        meta["column"] = column
+        path.write_text(dump_frontmatter(meta) + "\n" + body, encoding="utf-8")
+        print(f"  column: {column}")
     print(f"  frontmatter updated: {path}")
 
 
