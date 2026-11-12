@@ -1,11 +1,11 @@
 ---
 title: 黄仁勋辞职:赶走创始人的从来不是丑闻,是结构
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2104350243424833814
+id: 2104350243424833814
 created: 2026-11-12
-published:
+published: 2026-11-12
 tags: [governance, nvidia, hotspot]
 ---
 
