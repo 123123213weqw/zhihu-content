@@ -1,11 +1,11 @@
 ---
 title: 做空全解:靠别人的灾难赚钱,为什么 99% 的人先死于自己的仓位
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2104575831439890073
+id: 2104575831439890073
 created: 2026-11-13
-published:
+published: 2026-11-13
 tags: [finance, short-selling, options]
 ---
 
