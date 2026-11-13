@@ -67,3 +67,28 @@ def fig1_channels():
 if __name__ == "__main__":
     fig1_channels(); print("fig1 ok")
     print("->", OUT)
+
+
+def fig2_winners():
+    import numpy as np
+    fig, ax = plt.subplots(figsize=(6.4, 4.2))
+    labels = ["A股 1万以下账户\n(2016-19 上交所)", "A股 全市场\n(2025 口径)", "期货活跃散户\n5年存活盈利", "加密现货散户\n(BIS 2022)", "主动基金 15年\n跑赢标普(SPIVA)"]
+    win = [0.1, 18.9, 5.0, 25.0, 10.5]
+    err = [0, 0, 4.0, 4.0, 0]
+    colors = ["#BB3333", "#EE6677", "#B8860B", "#888888", "#2288CC"]
+    bars = ax.barh(range(5), win, xerr=[np.zeros(5), err], height=0.55,
+                   color=colors, ec="white", lw=0.6,
+                   error_kw=dict(ecolor="#555555", lw=1.0, capsize=3))
+    texts = ["≈0.1%", "18.9%", "1-10%", "20-30%", "10.5%"]
+    for i, (b, t) in enumerate(zip(bars, texts)):
+        ax.text(win[i] + (err[i] + 1.5 if i in (2, 3) else 1.5), b.get_y() + b.get_height()/2,
+                t, va="center", fontsize=9.5, fontweight="bold", color="#333333")
+    ax.set_yticks(range(5)); ax.set_yticklabels(labels, fontsize=8.5)
+    ax.invert_yaxis()
+    ax.set_xlabel("长期盈利面 / 跑赢比例(%)")
+    ax.set_xlim(0, 40)
+    ax.axvline(50, color="#bbbbbb", lw=0.7, ls=":")
+    ax.set_title("散户长期盈利面:没有一个市场接近抛硬币", fontsize=11.5, pad=8)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.tick_params(labelsize=8.5)
+    fig.savefig(f"{OUT}/fig2_winners.png"); plt.close(fig)
