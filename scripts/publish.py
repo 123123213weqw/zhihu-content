@@ -62,6 +62,31 @@ def convert_formulas(html: str) -> str:
 FORMULA_MD_RE = re.compile(r"\$\$[\s\S]+?\$\$|\$[^$\n]+?\$")
 
 
+ZHIHU_TABLE_ATTRS = ('data-draft-node="block" data-draft-type="table" '
+                     'data-size="normal" data-row-style="normal"')
+
+
+def zhihuify_tables(html: str) -> str:
+    """Convert markdown <table> to Zhihu's draft-editor table format.
+
+    Zhihu strips plain <table> but keeps tables carrying data-draft-*
+    attributes (its editor's internal format); <thead> rows are folded
+    into <tbody> to match the editor's storage shape.
+    """
+    def fix(m):
+        inner = m.group(1)
+        # fold <thead>...</thead> rows into the tbody block
+        thead = re.search(r"<thead>(.*?)</thead>", inner, re.DOTALL)
+        rows = ""
+        if thead:
+            rows += thead.group(1)
+        tbody = re.search(r"<tbody>(.*)</tbody>", inner, re.DOTALL)
+        rows += tbody.group(1) if tbody else re.sub(r"</?t(head|body)>", "", inner)
+        return f"<table {ZHIHU_TABLE_ATTRS}><tbody>{rows}</tbody></table>"
+
+    return re.sub(r"<table>(.*?)</table>", fix, html, flags=re.DOTALL)
+
+
 def render_markdown_with_formulas(md: MarkdownIt, body: str) -> str:
     """Render markdown while protecting formulas from the parser.
 
@@ -79,7 +104,7 @@ def render_markdown_with_formulas(md: MarkdownIt, body: str) -> str:
         formulas.append((raw[1:-1], False))
         return f"XFINLINEF{len(formulas)-1}FX"
 
-    html = md.render(FORMULA_MD_RE.sub(protect, body))
+    html = zhihuify_tables(md.render(FORMULA_MD_RE.sub(protect, body)))
     html = re.sub(
         r"<p>\s*XFBLOCKF(\d+)FX\s*</p>",
         lambda m: "<p>" + formula_img(formulas[int(m.group(1))][0].strip()) + "</p>",
@@ -172,6 +197,8 @@ def main() -> None:
     ap.add_argument("--dry-run", action="store_true", help="render only, no upload/publish")
     ap.add_argument("--force", action="store_true", help="republish even if status is published")
     ap.add_argument("--column", default=None, help="column (zhuanlan) id to publish into")
+    ap.add_argument("--update", action="store_true",
+                    help="in-place update of the already-published article (id from frontmatter)")
     args = ap.parse_args()
 
     path = Path(args.article).resolve()
@@ -232,6 +259,44 @@ def main() -> None:
         print("\n===== rendered HTML (dry run) =====\n")
         print(html)
         print(f"\n===== title: {title} | topics: {topics} =====")
+        return
+
+    if args.update:
+        aid = str(meta.get("id") or "")
+        if not aid:
+            die("--update needs a published article id in frontmatter")
+        info(f"uploading images (dedup by hash)...")
+        for m in IMG_RE.finditer(html):
+            src, rest = m.group(1), m.group(2)
+            if src.startswith(("http://", "https://", "//")):
+                continue
+            img_path = (path.parent / src).resolve()
+            if not img_path.is_file():
+                die(f"image not found: {img_path}")
+            up = upload_with_retry(client, img_path)
+            alt_m = alt_re.search(rest)
+            new_tag = zhihu_img_tag(up, alt_m.group(1) if alt_m else "")
+            html = html.replace(f'<img src="{src}"{rest}>', new_tag)
+        r = client._session.patch(
+            f"https://zhuanlan.zhihu.com/api/articles/{aid}/draft",
+            json={"title": title, "content": html}, timeout=30)
+        if r.status_code not in (200, 204):
+            die(f"update PATCH failed ({r.status_code}): {r.text[:200]}")
+        import time as _t; _t.sleep(1)
+        pub = client._session.put(
+            f"https://zhuanlan.zhihu.com/api/articles/{aid}/publish",
+            json={"column": None, "commentPermission": "anyone"}, timeout=30)
+        if pub.status_code != 200:
+            die(f"republish PUT failed ({pub.status_code}): {pub.text[:200]}")
+        _t.sleep(2)
+        back = client._session.get(
+            f"https://zhuanlan.zhihu.com/api/articles/{aid}", timeout=15).json()
+        got = back.get("content", "")
+        n_f = got.count("eeimg"); n_t = got.count('data-draft-type="table"')
+        n_i = len(re.findall(r"zhimg\.com/v2-|pic\.zhihu\.com/v2-", got))
+        client.close()
+        print(f"\n✓ Updated in place: https://zhuanlan.zhihu.com/p/{aid}")
+        print(f"  readback: formulas={n_f} tables={n_t} figures={n_i} chars={len(got)}")
         return
 
     # --- publish ---
