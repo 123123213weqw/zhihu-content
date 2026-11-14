@@ -1,11 +1,11 @@
 ---
 title: 我用 Rust 写了个开源 AI Agent 运行时:XHarness——会话断电可恢复,桌面/网页同一套 Host
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2104873116044357928
+id: 2104873116044357928
 created: 2026-11-14
-published:
+published: 2026-11-14
 tags: [rust, ai-agent, open-source, xharness]
 ---
 
