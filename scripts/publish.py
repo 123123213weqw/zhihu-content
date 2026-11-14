@@ -60,6 +60,7 @@ def convert_formulas(html: str) -> str:
 
 
 FORMULA_MD_RE = re.compile(r"\$\$[\s\S]+?\$\$|\$[^$\n]+?\$")
+CODE_FENCE_RE = re.compile(r"```[\s\S]*?```")
 
 
 ZHIHU_TABLE_ATTRS = ('data-draft-node="block" data-draft-type="table" '
@@ -104,7 +105,17 @@ def render_markdown_with_formulas(md: MarkdownIt, body: str) -> str:
         formulas.append((raw[1:-1], False))
         return f"XFINLINEF{len(formulas)-1}FX"
 
-    html = zhihuify_tables(md.render(FORMULA_MD_RE.sub(protect, body)))
+    # protect fenced code blocks from formula extraction ($PWD etc. must not
+    # become math); process formulas only outside them, then restore
+    code_blocks: list[str] = []
+    def _stash_code(m):
+        code_blocks.append(m.group(0))
+        return f"\nXFCODEF{len(code_blocks)-1}FX\n"
+    guarded = CODE_FENCE_RE.sub(_stash_code, body)
+    guarded = FORMULA_MD_RE.sub(protect, guarded)
+    guarded = re.sub(r"XFCODEF(\d+)FX",
+                     lambda m: code_blocks[int(m.group(1))], guarded)
+    html = zhihuify_tables(md.render(guarded))
     html = re.sub(
         r"<p>\s*XFBLOCKF(\d+)FX\s*</p>",
         lambda m: "<p>" + formula_img(formulas[int(m.group(1))][0].strip()) + "</p>",
