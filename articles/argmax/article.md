@@ -1,11 +1,11 @@
 ---
 title: argmax:AI 每说一个字,都是它在做决定——一个函数的完整数学解析
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2105264283642749635
+id: 2105264283642749635
 created: 2026-11-15
-published:
+published: 2026-11-15
 tags: [math, deep-learning, argmax, softmax]
 ---
 
