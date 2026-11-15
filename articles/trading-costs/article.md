@@ -1,11 +1,11 @@
 ---
 title: 回测年化 25%,实盘亏 5%:量化交易费用,才是隐形的主力资金
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2105318873595634591
+id: 2105318873595634591
 created: 2026-11-15
-published:
+published: 2026-11-15
 tags: [quant, trading-costs, finance]
 ---
 
