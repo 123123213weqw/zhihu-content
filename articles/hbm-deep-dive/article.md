@@ -1,11 +1,11 @@
 ---
 title: 国产 GPU 全景与 HBM 深度解剖:差在哪、怎么叠、谁在出货——从硅穿孔到超节点的完整拆解
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2105627919661979225
+id: 2105627919661979225
 created: 2026-11-15
-published:
+published: 2026-11-16
 tags: [hardware, gpu, hbm, china, semiconductor, packaging]
 ---
 
