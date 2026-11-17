@@ -1,11 +1,11 @@
 ---
 title: GPU 的心脏:SM 内部解剖——128 个 CUDA Core、4 个 Tensor Core、64K 寄存器是怎么协同干活的
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2105940266154713148
+id: 2105940266154713148
 created: 2026-11-16
-published:
+published: 2026-11-17
 tags: [gpu, sm, hardware, deep-learning, tensor-core]
 ---
 
