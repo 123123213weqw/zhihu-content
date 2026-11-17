@@ -213,7 +213,127 @@ HBM → Shared Memory(硬件自动搬)
 
 计算和数据搬运重叠——Shared Memory 的利用率又多榨了一层。
 
-## 七、总结
+## 七、下沉到 PTX:指令级看 Shared Memory
+
+CUDA C 是给人类写的。GPU 真正执行的是 **PTX(Parallel Thread Execution)**——NVIDIA 的虚拟汇编。在这一层，你能精确看到每一条指令做什么，从而**数出你的 kernel 到底是计算瓶颈还是内存瓶颈**。
+
+### 7.1 Shared Memory 的 PTX 指令
+
+CUDA C 的 `__shared__` 声明和读写，编译后变成这些 PTX 指令：
+
+| CUDA C | PTX 指令 | 做什么 |
+|---|---|---|
+| `As[tid] = x` | `st.shared.f32 [%r1], %f1` | 写 4 字节到 Shared Memory |
+| `x = As[tid]` | `ld.shared.f32 %f1, [%r1]` | 从 Shared Memory 读 4 字节 |
+| `__syncthreads()` | `bar.sync 0` | 屏障：等所有线程到齐 |
+| `A[i] = x`(HBM) | `st.global.f32 [%r2], %f1` | 写到全局内存(HBM) |
+| `x = A[i]`(HBM) | `ld.global.f32 %f1, [%r2]` | 从全局内存读 |
+| Tensor Core 调用 | `mma.sync.aligned.m16n8k16...` | 一次矩阵乘 |
+
+矩阵乘 Tiled 内核的 PTX 核心循环长这样(简化)：
+
+```ptx
+// 加载 tile 到 shared memory
+ld.global.f32  %f1, [%rd_global_A];    // 1. 从 HBM 读(600 cycles)
+st.shared.f32 [%rs_A], %f1;            // 2. 写入 Shared Memory
+bar.sync 0;                            // 3. 等所有线程搬完
+
+// 从 shared memory 读数据,做乘加
+ld.shared.f32 %f2, [%rs_A + %r_off];   // 4. 从 Shared 读(30 cycles)
+ld.shared.f32 %f3, [%rs_B + %r_off];
+fma.rn.f32 %f4, %f2, %f3, %f4;         // 5. 乘加(CUDA Core)
+// 或:mma.sync...                       //    矩阵乘(Tensor Core)
+bar.sync 0;
+```
+
+**指令计数 = 性能上限**。你可以数 PTX 里的 `ld.shared` 和 `mma` 条数，精确算出你的 kernel 每个循环用了多少带宽和多少算力。
+
+### 7.2 从 PTX 数出你的 Arithmetic Intensity
+
+一个 m16n8k16 的 Tensor Core 指令(Hopper):
+
+```
+mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32
+```
+
+这条指令做 16×8×16 矩阵乘 = **16 × 8 × 16 × 2 = 4096 FLOPS**
+
+它需要的输入：
+- A 矩阵：16 × 16 = 256 个 FP16 = 512 字节
+- B 矩阵：16 × 8 = 128 个 FP16 = 256 字节
+- 总输入 = 768 字节
+
+$$\text{AI}_{\text{mma}} = \frac{4096\ \text{FLOPS}}{768\ \text{Bytes}} = 5.33\ \text{FLOPs/Byte}$$
+
+但这只是**单条指令**的 AI。关键在于数据复用：
+
+- 如果 A 和 B 从 Shared Memory 读(30 cycles),而 Shared Memory 里的数据已经从 HBM 读过一次
+- 那么 HBM 层面的 AI = 单条 AI × **复用次数**
+
+矩阵乘 4096×4096、TILE=32 时，每个 Shared Memory 里的数据被复用 32 次：
+
+$$\text{AI}_{\text{HBM}} = 5.33 \times 32 = 170.7\ \text{FLOPs/Byte}$$
+
+H100 平衡点是 295 FLOPs/Byte——还差一点。加大 TILE 到 64:
+
+$$\text{AI}_{\text{HBM}} = 5.33 \times 64 = 341 > 295$$
+
+这就是为什么高性能 GEMM kernel 用 TILE=64 或 128:**让 HBM 层面的 AI 超过平衡点，Tensor Core 才能满载**。
+
+### 7.3 Speed of Light(SOL):终极优化指标
+
+NVIDIA 的 Nsight Compute 工具会报告两个核心指标：
+
+```
+SM(计算)利用率:    ████████░░  78%
+Memory(带宽)利用率: █████░░░░░  45%
+```
+
+- **SM SOL**:你的 kernel 用了 Tensor Peak 的百分比
+- **Memory SOL**:你的 kernel 用了 HBM 带宽的百分比
+
+**理想状态：瓶颈那个指标接近 100%,另一个尽可能低**。
+
+| SM SOL | Memory SOL | 诊断 | 怎么修 |
+|---|---|---|---|
+| 90% | 30% | 计算瓶颈(好！) | 已经接近极限，增加 TILE 可能再挤 3-5% |
+| 20% | 80% | 内存瓶颈(不好) | 增大 TILE、用 cp.async 流水线 |
+| 30% | 30% | **延迟瓶颈** | 增加 occupancy(更多 warp)、消除 bank conflict |
+| 50% | 50% | 混合瓶颈 | 逐步调 TILE 和流水线深度 |
+
+**SOL 的数学**：
+
+$$\text{Achieved Performance} = \min(SM_{\text{SOL}},\ Memory_{\text{SOL}}) \times \text{Peak}$$
+
+两个 SOL 中的**较低者**决定实际性能。优化策略：找出哪个是短板，然后针对它修。
+
+### 7.4 PTX 级优化清单
+
+从高到低优先级：
+
+1. **确认 AI > 平衡点**(否则全是白搭)：
+   - TILE 加大到 HBM 层面 AI 超过 Compute/BW 比值
+   - H100 FP16: $295$ FLOPs/Byte
+
+2. **消除 Bank Conflict**:
+   - 编译 PTX 后数 `ld.shared` 条数
+   - 有 conflict 时一条 `ld.shared` 会变成串行多条
+   - 用 Padding `[N][N+1]` 或 Swizzle 重排
+
+3. **软件流水线(cp.async)**:
+   - Hopper: `cp.async.ca.shared.global` 后台搬运
+   - 让搬运 tile N+1 和计算 tile N 重叠
+
+4. **最大化 Occupancy**:
+   - 减少每线程寄存器数(PTX 编译器有 `-maxrregcount`)
+   - Shared Memory 用量 ≤ 48KB/block(保证多个 block 同时驻留)
+   - 目标：≥50% occupancy,足够隐藏 600-cycle HBM 延迟
+
+5. **指令级并行(ILP)**:
+   - 一个循环里放多个独立的 `mma`(无数据依赖)
+   - PTX 编译器会自动调度，但要确保源代码没有人为的串行化
+
+## 八、总结
 
 Shared Memory 是 GPU 设计里**最像"给程序员的一个承诺"**的东西：
 
