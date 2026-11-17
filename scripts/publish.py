@@ -169,7 +169,7 @@ def dump_frontmatter(meta: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def upload_with_retry(client, img_path: Path, tries: int = 3, wait: float = 5.0) -> dict:
+def upload_with_retry(client, img_path: Path, tries: int = 5, wait: float = 8.0) -> dict:
     """upload_image with retries — Zhihu's image processing occasionally stalls."""
     import time
     last: Exception | None = None

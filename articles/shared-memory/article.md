@@ -1,11 +1,11 @@
 ---
 title: GPU Shared Memory:为什么程序员能控制缓存,而 CPU 不能——从 Bank Conflict 到矩阵乘 32 倍加速的完整拆解
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2106116888740876499
+id: 2106116888740876499
 created: 2026-11-17
-published:
+published: 2026-11-17
 tags: [gpu, shared-memory, cuda, hardware, deep-learning]
 ---
 
