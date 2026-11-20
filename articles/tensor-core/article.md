@@ -1,11 +1,11 @@
 ---
 title: Tensor Core 内部:脉动阵列——GPU 里最像专用芯片的部分,989 TFLOPS 的物理来源
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2107098301057200854
+id: 2107098301057200854
 created: 2026-11-18
-published:
+published: 2026-11-20
 tags: [gpu, tensor-core, systolic-array, hardware, deep-learning]
 ---
 
