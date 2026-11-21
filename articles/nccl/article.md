@@ -1,11 +1,11 @@
 ---
 title: NCCL:多 GPU 训练的血管系统——为什么 8 张卡只发 2 份数据就够,Ring AllReduce 的完整数学
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2107425782461100044
+id: 2107425782461100044
 created: 2026-11-21
-published:
+published: 2026-11-21
 tags: [gpu, nccl, distributed-training, allreduce, hardware]
 ---
 
