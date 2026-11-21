@@ -291,6 +291,159 @@ __global__ void transpose(float* input, float* output, int n) {
 
 一行改动,32 倍吞吐提升。
 
+## 八b、五个实战案例
+
+### 案例 ① 矩阵乘(GEMM):最经典的冲突场景
+
+Tiled 矩阵乘 $C = A \times B$ 的内循环:
+
+```cuda
+__global__ void gemm(float* A, float* B, float* C, int N) {
+    __shared__ float As[32][32];
+    __shared__ float Bs[32][32];
+    // ...
+    for (int k = 0; k < 32; k++) {
+        // 每个线程读 As[threadIdx.y][k] 和 Bs[k][threadIdx.x]
+        sum += As[threadIdx.y][k] * Bs[k][threadIdx.x];
+    }
+}
+```
+
+**冲突分析**:
+
+32 个线程(threadIdx.x = 0..31)在同一个 warp 中,threadIdx.y 固定(比如 y=0):
+- 读 `As[0][k]`:所有线程读**同一个地址** → **广播,1 cycle** ✓
+- 读 `Bs[k][threadIdx.x]`:word 地址 = $k \times 33 + threadIdx.x$ → 连续 32 个 word → **Bank $k \times 33 + tid \bmod 32$ → 如果 $k$ 是 32 的倍数,Bank = $tid$,无冲突;如果 $k \times 33$ 不是 32 的倍数,也不是 32 的倍数... 实际上 $33 \bmod 32 = 1$,所以 bank = $(k + tid) \bmod 32$ → 32 个不同 bank,**无冲突!** ✓
+
+看起来 GEMM 天然无冲突?**如果你用 `[32][32]`(无 padding)的数组:**
+- `Bs[k][tid]` → word $k \times 32 + tid$ → Bank $(k \times 32 + tid) \bmod 32 = tid \bmod 32$ → **Bank = tid,无冲突** ✓
+
+但如果 warp 的 32 个线程是 $tid.y = 0..31$ 而不是 $tid.x = 0..31$(按列排布的 thread block):
+- 读 `As[tid.y][k]` → **所有线程读同一列的同一行 → 同一个地址 → 广播** ✓
+- 读 `Bs[k][tid.x]` → 不同 tid.x → 无冲突 ✓
+
+**结论**:GEMM 的读取本身往往没冲突,但**写入 tile 时**(`As[tid.y][tid.x] = A[row][col]`)在按列排布时会冲突。这就是 cuBLAS 用 swizzle 的原因。
+
+### 案例 ② Parallel Reduction(求和):树形归约
+
+```cuda
+__shared__ float data[256];
+
+// Hillis-Steele scan / tree reduction
+for (int stride = 1; stride < blockDim.x; stride *= 2) {
+    int idx = 2 * stride * threadIdx.x;
+    if (idx < blockDim.x) {
+        data[idx] += data[idx + stride];
+    }
+    __syncthreads();
+}
+```
+
+**stride=1 时**:线程 0,1,2...读 word 0,2,4,6...(偶数)→ Bank 0,2,4,6... → **无冲突** ✓
+**stride=16 时**:线程 0,1,2...读 word 0,32,64,96...→ Bank 0,0,0,0... → **32-way 冲突!** ✗
+
+修复:加 padding 或改用 warp shuffle(根本不用 Shared Memory):
+
+```cuda
+// 用 __shfl_down_sync 替代 Shared Memory 的 reduction
+for (int offset = 16; offset > 0; offset /= 2) {
+    val += __shfl_down_sync(0xFFFFFFFF, val, offset);
+}
+```
+
+Warp shuffle 直接走寄存器,完全不经过 Shared Memory → **永远不会冲突**。
+
+### 案例 ③ Softmax(LLM 推理)
+
+LLM 推理最频繁的操作之一:
+
+```cuda
+// 1. 求行最大值(归约)
+__shared__ float row[128];
+// ... reduce to max ...
+
+// 2. 计算 exp(x - max) 并求和
+for (int i = tid; i < seq_len; i += 32) {
+    row[tid] += expf(x[i] - max_val);  // 读写 row[tid]
+}
+```
+
+**冲突分析**:tid = 0..31,`row[tid]` 是连续的 → word 0..31 → Bank 0..31 → **无冲突** ✓
+
+**但如果换了布局**:
+```cuda
+// 按列处理(row-major → 变成了 stride 访问)
+row[tid * seq_len] += expf(x[i] - max_val);  // stride = seq_len
+```
+
+如果 $seq\_len = 33$,则 word = $tid \times 33$ → Bank = $(tid \times 33) \bmod 32 = tid \bmod 32$ → 32 个不同 bank,**无冲突**!
+
+如果 $seq\_len = 32$,则 word = $tid \times 32$ → Bank = $(tid \times 32) \bmod 32 = 0$ → **全部打 Bank 0,32-way 冲突!**
+
+**规律**:stride 是 32 的倍数 → 必冲突;stride 与 32 互素 → 无冲突。
+
+### 案例 ④ Flash Attention 的 Swizzling
+
+Flash Attention 是 2022 年最重要的 GPU kernel 优化,它的 Shared Memory 访问用了一个精巧的 XOR swizzle:
+
+```cuda
+// Flash Attention 的 tile 索引计算
+int swizzled_col = col ^ (row & 7);  // XOR 低 3 位
+```
+
+**为什么 XOR 低 3 位?** 因为 Flash Attention 的 tile 大小通常是 64×64 或 128×64,bank conflict 主要发生在**每 8 行一个周期**(8 × 32 = 256 word = 绕 bank 8 圈,回到同一个 bank)。XOR 低 3 位(即 $\&\,7$)恰好打散 8 行的 bank 映射。
+
+```cuda
+// 完整 swizzle 计算
+int new_col = col ^ (row % 8);
+float val = tile[row][new_col];
+```
+
+这个技巧让 Flash Attention 的 Shared Memory 吞吐从 ~33% 提升到 ~98%。
+
+### 案例 ⑤ Embedding Lookup(间接寻址)
+
+```cuda
+// NLP 中的 embedding lookup
+__shared__ float emb_table[1024][128];  // 1024 个词,128 维
+
+// token id 是随机的
+int token_id = tokens[threadIdx.x];  // 间接寻址
+float val = emb_table[token_id][0];  // 读第 0 维
+```
+
+**冲突分析**:token_id 是**随机的**,所以 word 地址 = $token\_id \times 128$(因为每行 128 个 float)。Bank = $(token\_id \times 128) \bmod 32 = 0$(因为 128 是 32 的倍数)!
+
+**全部 32 个线程都打 Bank 0!** 32-way conflict。
+
+**修复**:
+```cuda
+__shared__ float emb_table[1024][128 + 1];  // +1 padding
+// Bank = (token_id * 129) % 32 = (token_id * 129 % 32) → 因 129 与 32 互素,不同 token_id → 不同 bank ✓
+```
+
+或者把 embedding 表换到**常量内存**(constant memory,自动广播)或 L1 cache(不受 bank 限制)。
+
+## 八c、冲突规律速查表
+
+给你一张"什么情况会冲突"的速查表:
+
+| stride | word 地址模式 | Bank 分布 | 冲突? |
+|---|---|---|---|
+| 1(连续) | $tid$ | $tid \bmod 32$ → 全不同 | **无** ✓ |
+| 2 | $2 tid$ | $2tid \bmod 32$ → 2-way 冲突 | **2-way** |
+| 4 | $4 tid$ | $4tid \bmod 32$ → 4-way 冲突 | **4-way** |
+| 8 | $8 tid$ | $8tid \bmod 32$ → 8-way 冲突 | **8-way** |
+| 16 | $16 tid$ | $16tid \bmod 32$ → 2-way 冲突 | **2-way** |
+| 32 | $32 tid$ | $32tid \bmod 32 = 0$ → 全同一个 | **32-way** ✗ |
+| 33(与32互素) | $33 tid$ | $33tid \bmod 32 = tid$ → 全不同 | **无** ✓ |
+| 0(同地址) | 同一个 word | 同一个地址 | **广播,无冲突** ✓ |
+
+**核心规律**:
+$$\text{stride} \equiv 0 \pmod{32} \Rightarrow \text{32-way conflict}$$
+$$\gcd(\text{stride}, 32) = 1 \Rightarrow \text{no conflict}$$
+$$\gcd(\text{stride}, 32) = k \Rightarrow \text{k-way conflict}$$
+
 ## 九、总结
 
 Bank Conflict 是 GPU kernel 的**隐形杀手**:
