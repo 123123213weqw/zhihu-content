@@ -1,8 +1,11 @@
 ---
 title: Prefill 快如闪电,Decode 慢如蜗牛:注意力结构在 GPU 上的困境——GDN/KDA 为什么难跑,硬件会不会为模型改牌
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2107897288303695692
+id: 2107897288303695692
 created: 2026-11-22
+published: 2026-11-22
 tags: [gpu, attention, linear-attention, gdn, kda, mla, decode, roofline, hardware]
 ---
 
