@@ -1,8 +1,11 @@
 ---
 title: 一条指令的 0.57 纳秒:GPU 核心是怎么算数的——五级流水线、记分板,和用 64 个 warp 藏住延迟的数学
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2107882991703811033
+id: 2107882991703811033
 created: 2026-11-22
+published: 2026-11-22
 tags: [gpu, warp-scheduler, pipeline, fma, latency-hiding, cuda, hardware]
 ---
 
