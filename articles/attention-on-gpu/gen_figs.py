@@ -101,6 +101,50 @@ def fig2_kv():
     fig.savefig(f"{OUT}/fig2_kv.png"); plt.close(fig)
 
 
+def fig4_chunked():
+    fig, axes = plt.subplots(2, 1, figsize=(7.6, 5.6), gridspec_kw={"height_ratios": [1.15, 1]})
+
+    # ---- (a) 批发 vs 零售:权重复用 -----------------------------------------
+    ax = axes[0]
+    ax.set_xlim(0, 15.6); ax.set_ylim(0, 4.6); ax.axis("off")
+    # W 大方块
+    ax.add_patch(FancyBboxPatch((0.8, 0.7), 3.2, 3.2, boxstyle="round,pad=0.05",
+                                fc="#f5f0e6", ec="#b09a6a", lw=1.4))
+    ax.text(2.4, 2.3, "权重 W\n$d \\times d$", ha="center", va="center", fontsize=11, fontweight="bold")
+    # X 多列(prefill)与单列(decode)
+    ax.add_patch(plt.Rectangle((6.2, 0.7), 3.0, 3.2, fc="#e8f3fb", ec=DBLUE, lw=1.2))
+    ax.text(7.7, 2.3, "X\n$T$ 列 token", ha="center", va="center", fontsize=9.5)
+    ax.text(5.1, 2.3, "$\\times$", ha="center", va="center", fontsize=15, color="#888888")
+    ax.add_patch(plt.Rectangle((11.6, 1.75), 0.55, 1.1, fc="#f2d9d9", ec=DRED, lw=1.2))
+    ax.text(11.87, 1.3, "1 列", ha="center", fontsize=9, color=DRED)
+    ax.text(10.4, 2.3, "$\\times$", ha="center", va="center", fontsize=15, color="#888888")
+    ax.text(7.7, 4.15, "(a) 同一份权重:prefill 批发(T 列),decode 零售(1 列)",
+            ha="center", fontsize=10.5, fontweight="bold")
+    ax.text(7.7, 0.25, "每个 $w_{ij}$ 被复用 T 次 → AI ≈ T:右上 = 站上屋顶,右下 = 趴在墙根",
+            ha="center", fontsize=9, color="#333333")
+
+    # ---- (b) chunked prefill 混排 -------------------------------------------
+    ax = axes[1]
+    ax.set_xlim(0, 15.6); ax.set_ylim(0, 3.6); ax.axis("off")
+    for i, x in enumerate((0.9, 5.7, 10.5)):
+        ax.add_patch(FancyBboxPatch((x, 0.8), 3.8, 1.8, boxstyle="round,pad=0.06",
+                                    fc="#eef7ee", ec=DGREEN, lw=1.3))
+        ax.add_patch(plt.Rectangle((x + 0.25, 1.05), 2.6, 1.3, fc="#e8f3fb", ec=DBLUE, lw=1.0))
+        ax.text(x + 1.55, 1.7, f"prefill 块 {i+1}\n512 token", ha="center", va="center", fontsize=8.6)
+        ax.add_patch(plt.Rectangle((x + 3.0, 1.05), 0.6, 1.3, fc="#f2d9d9", ec=DRED, lw=1.0))
+        ax.text(x + 3.68, 1.7, "decode", ha="left", va="center", fontsize=7.6, color=DRED)
+        ax.text(x + 1.9, 2.85, f"step {i+1}:同一 batch", ha="center", fontsize=8.6, color=DGREEN)
+        if i < 2:
+            ax.add_patch(FancyArrowPatch((x + 3.9, 1.7), (x + 4.6, 1.7), arrowstyle="-|>",
+                                         mutation_scale=11, color="#888888", lw=1.2))
+    ax.text(7.8, 3.35, "(b) Chunked prefill:长 prompt 切块逐段算,decode token 每步搭车",
+            ha="center", fontsize=10.5, fontweight="bold")
+    ax.text(7.8, 0.25, "decode 的权重复用:1 次 → 512+ 次,从墙根被拽上屋顶",
+            ha="center", fontsize=9.5, color=DRED, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(f"{OUT}/fig4_chunked.png"); plt.close(fig)
+
+
 def fig3_chunk():
     fig, axes = plt.subplots(2, 1, figsize=(7.6, 5.0), gridspec_kw={"height_ratios": [1, 1.25]})
 
@@ -156,4 +200,5 @@ if __name__ == "__main__":
     fig1_roofline()
     fig2_kv()
     fig3_chunk()
+    fig4_chunked()
     print("done ->", OUT)
