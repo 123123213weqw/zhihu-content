@@ -1,11 +1,11 @@
 ---
 title: Bank Conflict 全解:GPU Shared Memory 的 32 个窗口,为什么"排错队"会慢 32 倍——六种冲突模式与两种修法
 topics: []
-status: draft
-url:
-id:
+status: published
+url: https://zhuanlan.zhihu.com/p/2107793180099868167
+id: 2107793180099868167
 created: 2026-11-21
-published:
+published: 2026-11-22
 tags: [gpu, shared-memory, bank-conflict, cuda, hardware]
 ---
 
