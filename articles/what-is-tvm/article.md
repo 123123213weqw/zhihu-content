@@ -1,8 +1,11 @@
 ---
 title: TVM 是什么:让编译器替你写 GPU kernel——三层中间表示,和手写的 Tiling 怎么变成几行调度
 topics: []
-status: ready
+status: published
+url: https://zhuanlan.zhihu.com/p/2108365505178486499
+id: 2108365505178486499
 created: 2026-11-24
+published: 2026-11-24
 tags: [gpu, tvm, compiler, tensorir, relax, tirx, kernel, cuda, intermediate-representation]
 ---
 
