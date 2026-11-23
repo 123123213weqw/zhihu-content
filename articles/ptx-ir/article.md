@@ -1,8 +1,11 @@
 ---
 title: CUDA 的中间层:PTX 到底长什么样——一份真实的 PTX 和 SASS,虚拟寄存器、谓词分支,和"为什么同一个 PyTorch 在新卡上能跑、在旧卡上跑不了"
 topics: []
-status: ready
+status: published
+url: https://zhuanlan.zhihu.com/p/2108426511435024287
+id: 2108426511435024287
 created: 2026-11-24
+published: 2026-11-24
 tags: [gpu, cuda, ptx, sass, nvcc, ptxas, compiler, intermediate-representation, compatibility, hardware]
 ---
 
