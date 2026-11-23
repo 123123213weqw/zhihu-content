@@ -201,8 +201,149 @@ def fig4_learning():
     fig.savefig(f"{OUT}/fig4_learning.png"); plt.close(fig)
 
 
+def fig5_flow():
+    """prefill vs decode: who reads what, and why prefill must traverse the whole model."""
+    fig, ax = plt.subplots(figsize=(15, 8.2))
+    ax.set_xlim(0, 30); ax.set_ylim(-0.2, 16.3); ax.axis("off")
+
+    ycs = [10.9, 9.2, 5.8, 4.1]          # 四个可见层的中心
+    names = ["第 1 层", "第 2 层", "第 31 层", "第 32 层"]
+    hh = 0.55
+
+    # ---------- 左:prefill ----------
+    ax.text(5.3, 15.7, "① Prefill:N 个 token 排成大矩阵,一起过完 32 层",
+            ha="center", fontsize=12.5, fontweight="bold", color=DBLUE)
+    x0, x1, y0, y1 = 1.0, 5.6, 12.3, 14.7
+    ax.add_patch(plt.Rectangle((x0, y0), x1 - x0, y1 - y0, fc="#cfe0f2", ec=DBLUE, lw=1.4))
+    for i in range(1, 14):
+        ax.plot([x0 + i * (x1 - x0) / 14] * 2, [y0, y1], color="white", lw=0.7)
+    for j in range(1, 5):
+        ax.plot([x0, x1], [y0 + j * (y1 - y0) / 5] * 2, color="white", lw=0.7)
+    ax.text((x0 + x1) / 2, (y0 + y1) / 2, "X:N × 4096\n(N 个 token 并排)", ha="center", va="center",
+            fontsize=9.5, fontweight="bold", color="#174a73")
+    arrow(ax, 3.3, 12.2, 3.3, 11.5, color=DBLUE)
+    for yc, nm in zip(ycs, names):
+        box(ax, 1.0, yc - hh, 4.6, 2 * hh, f"{nm}   读一遍这层的权重", fc="#e8f3fb", ec=DBLUE, fs=9.4)
+    arrow(ax, 3.3, 8.6, 3.3, 8.2, color=DBLUE)
+    for dy in (-0.28, 0.0, 0.28):
+        ax.plot(3.3, 7.5 + dy, "o", ms=3.2, color="#555555")
+    arrow(ax, 3.3, 6.85, 3.3, 6.4, color=DBLUE)
+    arrow(ax, 3.3, 5.2, 3.3, 4.7, color=DBLUE)
+    arrow(ax, 3.3, 3.5, 3.3, 3.15, color=DBLUE)
+    box(ax, 0.8, 2.0, 5.0, 1.1, "最后一个 token 的向量\n→ 预测出第 1 个新词", fc="#f5f0e6", ec="#b09a6a", fs=9.2, bold=True)
+    ax.text(5.3, 1.35, "每层权重只读 1 遍,同时服务全部 N 个 token(大矩阵)",
+            ha="center", fontsize=10, color=DBLUE, fontweight="bold")
+
+    # ---------- 中:KV cache ----------
+    ax.text(15.0, 15.7, "KV cache", ha="center", fontsize=12.5, fontweight="bold", color=DGREEN)
+    ax.text(15.0, 14.95, "每个 token 在每一层的 K、V 都存一份", ha="center", fontsize=9.2, color="#555555")
+    for yc, nm in zip(ycs, names):
+        tx0, tx1 = 11.6, 18.4
+        ax.add_patch(plt.Rectangle((tx0, yc - hh), tx1 - tx0, 2 * hh, fc="#eef7ee", ec=DGREEN, lw=1.3))
+        for j in range(1, 3):
+            ax.plot([tx0, tx1], [yc - hh + j * (2 * hh) / 3] * 2, color=DGREEN, lw=0.4, alpha=0.5)
+        for i in range(1, 16):
+            ax.plot([tx0 + i * (tx1 - tx0) / 16] * 2, [yc - hh, yc + hh], color=DGREEN, lw=0.3, alpha=0.35)
+        ax.text((tx0 + tx1) / 2, yc, f"{nm}:K、V × N 个 token", ha="center", va="center",
+                fontsize=9.2, color="#0d5a2b", fontweight="bold",
+                bbox=dict(fc="#eef7ee", ec="none", pad=1.5))
+        arrow(ax, 5.7, yc, 11.5, yc, color=DBLUE)
+        ax.text(8.6, yc + 0.28, "写入 K、V", ha="center", fontsize=8.6, color=DBLUE, fontweight="bold")
+    for dy in (-0.28, 0.0, 0.28):
+        ax.plot(15.0, 7.5 + dy, "o", ms=3.2, color="#555555")
+    ax.text(12.6, 13.6, "← prefill 写入", fontsize=9.5, color=DBLUE, fontweight="bold")
+    ax.text(17.4, 13.6, "decode 读取 →", fontsize=9.5, color=DRED, fontweight="bold", ha="right")
+
+    # ---------- 右:decode ----------
+    ax.text(24.6, 15.7, "② Decode:每次只带 1 个 token,也要过完 32 层",
+            ha="center", fontsize=12.5, fontweight="bold", color=DRED)
+    ax.add_patch(plt.Rectangle((22.4, y0), 1.2, y1 - y0, fc="#f2d9d9", ec=DRED, lw=1.4))
+    ax.text(22.0, (y0 + y1) / 2, "x:1 × 4096", ha="right", va="center", fontsize=9.4, fontweight="bold", color="#7a1f1f")
+    ax.text(24.0, 13.95, "只带 1 个新 token", ha="left", va="center", fontsize=9.4, color="#7a1f1f")
+    arrow(ax, 23.0, 12.2, 23.0, 11.5, color=DRED)
+    for yc, nm in zip(ycs, names):
+        box(ax, 21.0, yc - hh, 4.6, 2 * hh, f"{nm}   权重全部重读", fc="#fbeaea", ec=DRED, fs=9.4)
+        arrow(ax, 18.5, yc + 0.2, 20.9, yc + 0.2, color=DRED)
+        ax.text(19.7, yc + 0.46, "读 K、V", ha="center", fontsize=8.4, color=DRED, fontweight="bold")
+        arrow(ax, 20.9, yc - 0.22, 18.5, yc - 0.22, color=DBLUE)
+        ax.text(19.7, yc - 0.74, "追加自己 1 行", ha="center", fontsize=8.0, color=DBLUE)
+    arrow(ax, 23.3, 8.6, 23.3, 8.2, color=DRED)
+    for dy in (-0.28, 0.0, 0.28):
+        ax.plot(23.3, 7.5 + dy, "o", ms=3.2, color="#555555")
+    arrow(ax, 23.3, 6.85, 23.3, 6.4, color=DRED)
+    arrow(ax, 23.3, 5.2, 23.3, 4.7, color=DRED)
+    arrow(ax, 23.3, 3.5, 23.3, 3.15, color=DRED)
+    box(ax, 20.8, 2.0, 5.0, 1.1, "得到下一个 token", fc="#f5f0e6", ec="#b09a6a", fs=9.4, bold=True)
+    ax.text(24.6, 1.35, "每生成 1 个 token,32 层权重全部重读 1 遍",
+            ha="center", fontsize=10, color=DRED, fontweight="bold")
+    # 自回归回路
+    ax.add_patch(FancyArrowPatch((25.9, 2.55), (28.8, 2.55), arrowstyle="-", color=DRED, lw=1.3, linestyle="--"))
+    ax.add_patch(FancyArrowPatch((28.8, 2.55), (28.8, 12.9), arrowstyle="-", color=DRED, lw=1.3, linestyle="--"))
+    ax.add_patch(FancyArrowPatch((28.8, 12.9), (23.7, 12.9), arrowstyle="-|>", mutation_scale=12,
+                                 color=DRED, lw=1.3, linestyle="--"))
+    ax.text(29.55, 8.0, "拼回输入,再来一轮(自回归)", rotation=90, va="center", fontsize=9, color=DRED)
+
+    # ---------- 底部结论 ----------
+    ax.text(15.0, 0.35, "为什么 prefill 必须走完整个模型?—— 每个 token 在每一层的 K、V 都要算出来存进 KV cache,decode 的新 token 每一层都要回头查它们。",
+            ha="center", fontsize=11, fontweight="bold", color="#222222")
+    fig.savefig(f"{OUT}/fig5_flow.png"); plt.close(fig)
+
+
+def fig6_reuse():
+    """Multi-turn: why the old KV cache is reused instead of recomputed (causal mask)."""
+    fig, ax = plt.subplots(figsize=(15, 6.6))
+    ax.set_xlim(0, 30); ax.set_ylim(0, 13); ax.axis("off")
+
+    # ---------- 第 1 轮 ----------
+    ax.text(0.6, 12.5, "第 1 轮:问题 1 → prefill;回答 1 → decode 逐步追加",
+            fontsize=12.5, fontweight="bold", color=DBLUE)
+    ax.add_patch(plt.Rectangle((0.8, 8.7), 8.0, 1.8, fc="#cfe0f2", ec=DBLUE, lw=1.4))
+    ax.text(4.8, 9.6, "问题 1\nN 个 token", ha="center", va="center", fontsize=10, fontweight="bold", color="#174a73")
+    ax.text(4.8, 10.95, "prefill:一次算完", ha="center", fontsize=10, color=DBLUE, fontweight="bold")
+    ax.add_patch(plt.Rectangle((9.0, 8.7), 9.6, 1.8, fc="#f2d9d9", ec=DRED, lw=1.4))
+    ax.text(13.8, 9.6, "回答 1(decode 生成的 M 个 token)", ha="center", va="center", fontsize=10, fontweight="bold", color="#7a1f1f")
+    ax.text(13.8, 10.95, "decode:每生成 1 个,追加 1 个", ha="center", fontsize=10, color=DRED, fontweight="bold")
+    arrow(ax, 18.9, 9.6, 21.2, 9.6, color="#888888")
+    ax.text(20.05, 9.9, "写入", ha="center", fontsize=9, color="#666666")
+    ax.text(25.0, 10.95, "KV cache", ha="center", fontsize=10.5, fontweight="bold", color="#333333")
+    ax.add_patch(plt.Rectangle((21.5, 8.7), 3.0, 1.8, fc="#cfe0f2", ec=DBLUE, lw=1.2))
+    ax.text(23.0, 9.6, "问题 1\n的 K、V", ha="center", va="center", fontsize=9, color="#174a73")
+    ax.add_patch(plt.Rectangle((24.7, 8.7), 4.3, 1.8, fc="#f2d9d9", ec=DRED, lw=1.2))
+    ax.text(26.85, 9.6, "回答 1 的 K、V\n(decode 逐行追加)", ha="center", va="center", fontsize=9, color="#7a1f1f")
+
+    # ---------- 第 2 轮 ----------
+    ax.text(0.6, 7.3, "第 2 轮:在后面追加问题 2 → 只 prefill 新的那一段",
+            fontsize=12.5, fontweight="bold", color=DGREEN)
+    ax.add_patch(plt.Rectangle((0.8, 3.2), 8.0, 1.8, fc="#e9eef3", ec="#8aa4bd", lw=1.2))
+    ax.text(4.8, 4.1, "问题 1\n不变", ha="center", va="center", fontsize=10, color="#4a5f73")
+    ax.add_patch(plt.Rectangle((9.0, 3.2), 9.6, 1.8, fc="#f3e6e6", ec="#bd8a8a", lw=1.2))
+    ax.text(13.8, 4.1, "回答 1  不变", ha="center", va="center", fontsize=10, color="#7a4a4a")
+    ax.text(9.7, 2.55, "这两段的 K、V 第 1 轮已经算好、存在 cache 里 —— 不重算",
+            ha="center", fontsize=10.5, color="#444444", fontweight="bold")
+    ax.add_patch(plt.Rectangle((18.8, 3.2), 2.2, 1.8, fc="#eef7ee", ec=DGREEN, lw=1.6))
+    ax.text(19.9, 4.1, "问题 2(新)\n只算这一段", ha="center", va="center", fontsize=9.0, fontweight="bold", color="#0d5a2b")
+
+    ax.text(25.6, 6.55, "KV cache:旧的直接复用", ha="center", fontsize=10.5, fontweight="bold", color=DGREEN)
+    ax.add_patch(plt.Rectangle((22.6, 4.45), 6.0, 0.6, fc="#e9eef3", ec="#8aa4bd", lw=1.0))
+    ax.text(25.6, 4.75, "问题 1 的 K、V —— 保留", ha="center", va="center", fontsize=9, color="#4a5f73")
+    ax.add_patch(plt.Rectangle((22.6, 3.85), 6.0, 0.6, fc="#f3e6e6", ec="#bd8a8a", lw=1.0))
+    ax.text(25.6, 4.15, "回答 1 的 K、V —— 保留", ha="center", va="center", fontsize=9, color="#7a4a4a")
+    ax.add_patch(plt.Rectangle((22.6, 3.05), 6.0, 0.8, fc="#eef7ee", ec=DGREEN, lw=1.4))
+    ax.text(25.6, 3.45, "问题 2 的 K、V —— 新算", ha="center", va="center", fontsize=9.4, fontweight="bold", color="#0d5a2b")
+    arrow(ax, 21.1, 3.45, 22.5, 3.45, color=DGREEN)
+    ax.text(21.8, 2.72, "写入", ha="center", fontsize=9, color=DGREEN)
+    arrow(ax, 22.5, 4.75, 21.1, 4.3, color=DRED)
+    ax.text(22.75, 5.3, "新 token 回头读前面全部", ha="left", fontsize=9, color=DRED, fontweight="bold")
+
+    ax.text(15.0, 1.1, "为什么旧的不用重算?—— 因果掩码:第 i 个 token 的 K、V 只由它自己和它前面的 token 决定,后面追加什么都改不了它。",
+            ha="center", fontsize=11.5, fontweight="bold", color="#222222")
+    fig.savefig(f"{OUT}/fig6_reuse.png"); plt.close(fig)
+
+
 if __name__ == "__main__":
     fig2_anatomy()
     fig3_journey()
     fig4_learning()
+    fig5_flow()
+    fig6_reuse()
     print("done ->", OUT)
