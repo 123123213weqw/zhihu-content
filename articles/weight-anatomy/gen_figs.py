@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 
+import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -340,10 +341,90 @@ def fig6_reuse():
     fig.savefig(f"{OUT}/fig6_reuse.png"); plt.close(fig)
 
 
+def fig7_spec():
+    """Speculative decoding: timeline vs vanilla decoding + speedup vs acceptance rate."""
+    fig, axes = plt.subplots(2, 1, figsize=(9.0, 6.2), gridspec_kw={"height_ratios": [1, 1.25], "hspace": 0.42})
+
+    # ---- (a) 时间线 ----
+    ax = axes[0]
+    ax.set_xlim(0, 18.6); ax.set_ylim(0.3, 6.9); ax.axis("off")
+    ax.text(9.3, 6.6, "(a) 同样一次大模型前向(≈ 同样读一遍权重)", ha="center", fontsize=10.5, fontweight="bold")
+
+    y = 4.9
+    ax.text(0.2, y, "普通解码", ha="left", va="center", fontsize=10, fontweight="bold")
+    for i in range(5):
+        x = 2.4 + i * 3.0
+        ax.add_patch(FancyBboxPatch((x, y - 0.42), 2.6, 0.84, boxstyle="round,pad=0.04",
+                                    fc="#f2d9d9", ec=DRED, lw=1.2))
+        ax.text(x + 1.3, y, "大模型 ×1", ha="center", va="center", fontsize=8.8, color="#7a1f1f")
+    ax.text(17.7, y, "→ 5 个 token", ha="left", va="center", fontsize=9.2, color="#333333")
+
+    y2 = 2.5
+    ax.text(0.2, y2, "投机解码", ha="left", va="center", fontsize=10, fontweight="bold")
+    for i in range(4):
+        x = 2.4 + i * 0.92
+        ax.add_patch(FancyBboxPatch((x, y2 - 0.3), 0.82, 0.6, boxstyle="round,pad=0.03",
+                                    fc="#eef7ee", ec=DGREEN, lw=1.0))
+        ax.text(x + 0.41, y2, "小模型", ha="center", va="center", fontsize=6.8, color="#0d5a2b")
+    x = 2.4 + 4 * 0.92 + 0.2
+    ax.add_patch(FancyBboxPatch((x, y2 - 0.42), 2.6, 0.84, boxstyle="round,pad=0.04",
+                                fc="#f2d9d9", ec=DRED, lw=1.2))
+    ax.text(x + 1.3, y2, "大模型 ×1\n一次验证 5 个位置", ha="center", va="center", fontsize=8.2, color="#7a1f1f", linespacing=1.4)
+    ax.text(9.2, y2, "→ 平均 3.36 个 token", ha="left", va="center", fontsize=9.2, color="#333333")
+    ax.text(2.4, 1.35, "小模型读自己的小权重,便宜;大模型只走一步。", ha="left", fontsize=8.6, color="#666666")
+    ax.text(2.4, 0.8, "草稿猜错的位置之后全部回滚,那一步直接用大模型自己的输出。", ha="left", fontsize=8.6, color="#666666")
+
+    # ---- (b) 加速比曲线 ----
+    ax = axes[1]
+    alpha = np.linspace(0.5, 0.98, 300)
+    c = 0.1
+    for K, color in [(2, "#d9a441"), (4, DBLUE), (8, DRED)]:
+        sp = (1 - alpha ** (K + 1)) / ((1 - alpha) * (K * c + 1))
+        ax.plot(alpha, sp, color=color, lw=1.8, label=f"K = {K}")
+    a0 = 0.8
+    s0 = (1 - a0 ** 5) / ((1 - a0) * (4 * c + 1))
+    ax.plot([a0], [s0], "o", ms=8, color="#222222", zorder=5)
+    ax.annotate(f"α = 0.8, K = 4\n→ {s0:.1f} 倍", (a0, s0), textcoords="offset points", xytext=(10, -30),
+                fontsize=9, color="#222222", linespacing=1.4,
+                bbox=dict(fc="white", ec="none", alpha=0.8, pad=1.5))
+    ax.set_xlabel("草稿接受率 α")
+    ax.set_ylabel("加速比(倍)")
+    ax.set_xlim(0.5, 1.0); ax.set_ylim(1.0, 7.2)
+    ax.set_title("(b) 加速比随接受率的变化(小模型 / 大模型单步耗时比 c = 0.1)", fontsize=10.5, fontweight="bold", pad=8)
+    ax.legend(loc="upper left")
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.savefig(f"{OUT}/fig7_spec.png"); plt.close(fig)
+
+
+def fig8_moe():
+    """MoE: share of parameters actually touched per token."""
+    fig, ax = plt.subplots(figsize=(8.4, 3.5))
+    names = ["稠密模型", "Mixtral 8×7B", "DeepSeek-V3", "Qwen3-Next"]
+    total = [None, 46.7, 671.0, 80.0]
+    active = [None, 12.9, 37.0, 3.0]
+    pct = [100.0] + [a / t * 100 for a, t in zip(active[1:], total[1:])]
+    notes = ["全部参数", "46.7B 总 / 12.9B 激活", "671B 总 / 37B 激活", "80B 总 / 3B 激活"]
+    colors = [DGRAY, "#d9a441", DRED, DGREEN]
+    for i in range(4):
+        ax.barh(i, pct[i], 0.5, color=colors[i], ec="white", lw=0.6)
+        label = f"{pct[i]:.1f}%   {notes[i]}" if i else f"{pct[i]:.0f}%   {notes[i]}"
+        ax.text(pct[i] * 1.12, i, label, va="center", fontsize=9.2, color="#222222", fontweight="bold")
+    ax.set_yticks(range(4)); ax.set_yticklabels(names, fontsize=10)
+    ax.set_xscale("log"); ax.set_xlim(1, 900)
+    ax.set_xticks([1, 3, 10, 30, 100]); ax.set_xticklabels(["1%", "3%", "10%", "30%", "100%"])
+    ax.set_xlabel("每个 token 实际参与的参数占比(对数轴)")
+    ax.set_title("MoE:总参数很大,但每个 token 只读其中一小部分", fontsize=10.5, fontweight="bold", pad=8)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    fig.savefig(f"{OUT}/fig8_moe.png"); plt.close(fig)
+
+
 if __name__ == "__main__":
     fig2_anatomy()
     fig3_journey()
     fig4_learning()
     fig5_flow()
     fig6_reuse()
+    fig7_spec()
+    fig8_moe()
     print("done ->", OUT)

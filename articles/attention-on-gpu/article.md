@@ -197,7 +197,7 @@ $$S_t = S_{t-1}\,(I - \beta_t\, k_t k_t^{\top}) + \beta_t\, v_t\, k_t^{\top}$$
 
 两个当红模型都用了它们,而且配方一致——**3:1 混合**:每 4 层里 3 层线性注意力 + 1 层全注意力(Qwen3-Next 的 GDN、Kimi Linear 的 KDA 都是 3:1,全注意力层用 MLA)。线性行程 + 全注意力精确检索,两头都要。
 
-据各自技术报告:Kimi Linear 在 1M 上下文解码吞吐最高 **6 倍**于同规模 Transformer,KV cache 最高省 75%;Qwen3-Next(48B-A3B)同样主打长上下文解码的数量级提升。
+据各自技术报告:Kimi Linear 在 1M 上下文解码吞吐最高 **6 倍**于同规模 Transformer,KV cache 最高省 75%;Qwen3-Next(80B-A3B)同样主打长上下文解码的数量级提升。
 
 但对 GPU 来说,delta rule 把处境变得更糟。这个带 (I − βkk^T) 的更新,在一段序列内是**矩阵的连乘递推**——严格说更像解一个三角方程组(前代换),既不是逐元素操作(还能靠 CUDA Core 硬扛),也不是稠密 GEMM(能进 Tensor Core)。不上不下,卡在两种加速器的夹缝里。
 

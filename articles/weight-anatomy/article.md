@@ -69,7 +69,7 @@ $$\text{MLP}(x) = W_{down}\,\big(\text{SiLU}(W_{gate}\,x) \odot W_{up}\,x\big)$$
 
 $W_{gate}$ 升到 11008 维后,每一维过 SiLU($x \cdot \sigma(x)$)——值域可正可负,大部分落在零附近。它和 $W_{up}$ 的输出**逐通道相乘**:gate 给 0.9,内容几乎全过;gate 给 0.01,内容基本被掐死。11008 个通道,就是 11008 个"这条信息放不放行"的旋钮——这些旋钮的松紧,全是学出来的。
 
-MoE(混合专家)把这个思路推到极致:Qwen3-Next(48B 总参数)在 MLP 位置放一组专家,一个路由门控**每个 token 现场决定**走哪几个专家——所以每 token 只激活 3B 参数。门控从"通道开关"升级成了"专家开关"。
+MoE(混合专家)把这个思路推到极致:Qwen3-Next(80B 总参数)在 MLP 位置放一组专家,一个路由门控**每个 token 现场决定**走哪几个专家——所以每 token 只激活 3B 参数。门控从"通道开关"升级成了"专家开关"。
 
 ## 三、一个词的旅程:权重怎么"解析"它
 
@@ -219,7 +219,7 @@ $$K_i^{\ell},\, V_i^{\ell} \quad \text{depend only on} \quad x_1, \ldots, x_i$$
 
 ## 六、能不能不每次读全部层?
 
-看到这里很容易冒出一个念头:decode 每个token 都要把 13.5 GB 权重读一遍,只用了 0.3% 的算力——这里优化空间巨大。能不能几层合起来算一次?能不能把模型"固定成一个状态",新 token 只跟状态打照面?
+看到这里很容易冒出一个念头:decode 每个 token 都要把 13.5 GB 权重读一遍,只用了 0.3% 的算力——这里优化空间巨大。能不能几层合起来算一次?能不能把模型"固定成一个状态",新 token 只跟状态打照面?
 
 有这个空间,也有这些机制。只是"把几层合并成一层"这条路,在数学上走不通。
 
@@ -234,7 +234,7 @@ $$K_i^{\ell},\, V_i^{\ell} \quad \text{depend only on} \quad x_1, \ldots, x_i$$
 
 能合的早就合了:Q、K、V 三个投影实际拼成一个大矩阵读一次,gate 和 up 也是。但 32 层之间合不了。**权重必须每次都读,是因为"乘这些矩阵"本身就是计算**——新 token 的每一步变换都要用到 W;留不住,是因为装不下。
 
-### 6.2 已经在用的机制
+### 6.2 六种机制总览
 
 优化方向不是"合并层",而是把"少读、一次多算几个、把权重放近"做到极致:
 
@@ -244,10 +244,173 @@ $$K_i^{\ell},\, V_i^{\ell} \quad \text{depend only on} \quad x_1, \ldots, x_i$$
 | 不是每个 token 都需要全部层 | 早退、LayerSkip、Mixture-of-Depths | 简单的 token 走几层就出去 |
 | 别每个 token 都读一遍全部权重 | 投机解码 | 小模型先连猜几个,大模型一次并行验证;相当于一次 prefill 好几个 token |
 | 只读一部分权重 | MoE | 每个 token 只读少数几个专家 |
-| 多层共用一套权重 | 循环深度(recurrent depth,研究阶段) | 同一个块反复套用,需要读的权重少很多 |
+| 多层共用一套权重 | 循环深度(recurrent depth,研究阶段) | 同一个块反复套用,要存的权重少很多,深度可以现场加 |
 | 让权重不用反复搬 | Groq、d-Matrix | 把权重放到片上 SRAM |
 
-其中投机解码是这个专栏里专门写过的一篇;线性注意力与屋顶线的推导在 GPU 解剖台第八篇。
+下面逐个拆开,每种都按同一套问:解决什么、怎么做、能省多少、代价是什么、谁在用。
+
+### 6.2.1 上下文压成状态:KV cache 与线性注意力
+
+**解决什么**:新 token 不必重算前面的内容。
+
+KV cache 是第一层答案,第五节讲过:每个 token 在每一层的 K、V 存下来,新 token 只做"回头看"。它的代价是**状态随长度线性增长**。Llama-2-7B 每 token 0.5 MB,32K 上下文就是 17 GB;而且 decode 每一步都要把这 17 GB 读一遍。KV cache 是把"重算的计算"换成了"读状态的带宽"——上下文越长,decode 越慢,这件事没有解决。
+
+线性注意力要把状态**压成固定大小**。先看全注意力为什么压不动:
+
+$$o_t = \sum_{i \le t} \mathrm{softmax}_i(q_t \cdot k_i)\, v_i$$
+
+softmax 是对**全部**历史分数做归一化,所以每个历史 token 的 $k_i$、$v_i$ 都得单独留着。
+
+把 softmax 拿掉,求和就能先算完:
+
+$$o_t = \sum_{i \le t} v_i\,(k_i \cdot q_t) = \Big(\sum_{i \le t} v_i\, k_i^{\top}\Big) q_t = S_t\, q_t$$
+
+括号里就是一个矩阵 $S_t$,每来一个 token 累加一次:
+
+$$S_t = S_{t-1} + v_t\, k_t^{\top}$$
+
+GDN(Gated DeltaNet)在这上面加两样东西:衰减门 $\alpha_t$(旧的慢慢忘)和 delta rule(先擦掉旧记忆里冲突的部分再写):
+
+$$S_t = \alpha_t\, S_{t-1}\,(I - \beta_t\, k_t k_t^{\top}) + \beta_t\, v_t\, k_t^{\top}$$
+
+**能省多少**(7B 口径,32 头 × 128 × 128,FP16):每层状态 1 MB,32 层共 32 MB,**不随长度变**。对照全注意力在 32K 时的 17 GB,小了 500 多倍。decode 每步的计算也从"读 17 GB"变成"更新 32 MB"。
+
+**代价**有两条:
+
+- 召回精度。softmax 拿掉后,"大海捞针"式的精确检索会糊。所以当红模型都用 3:1 混合——每 4 层留 1 层全注意力,负责精确检索
+- GPU 不友好。状态更新是小矩阵上的逐元素运算,Tensor Core 插不上手,要靠分块扫描重新矩阵化(GPU 解剖台第八篇)
+
+**谁在用**:Qwen3-Next(GDN)、Kimi Linear(KDA)。
+
+### 6.2.2 早退、LayerSkip、Mixture-of-Depths:不是每个 token 都要 32 层
+
+**解决什么**:token 的难度不一样。"今天天气"后面接"很",浅层就定了;真正要推理的位置才用得上深层。一律走满 32 层是浪费。
+
+**早退**(early exit,CALM,2022)的做法最直接:每层后面都挂一个输出头,decode 时每过一层看一眼这一层的预测——够自信就输出,后面的层不走了。
+
+问题是,普通方式训练出来的模型,浅层根本没学过"预测下一个词"。它们的存在意义是把信息加工好传给下一层,直接让它们输出,准确率很差。
+
+**LayerSkip**(2024,Meta)从训练下手,两招:
+
+- 层丢弃:训练时随机跳过一些层的贡献,逼后面的层在"前面信息不全"时也能工作
+- 早退损失:每一层都加一个"预测下一个词"的辅助损失,让浅层也学会预测
+
+推理时,前几层快速起草几个 token,剩下的层**一次并行验证**——模型自己给自己当草稿模型。论文报告最高 2.16 倍加速。
+
+**Mixture-of-Depths**(2024,DeepMind)换个角度:每个 token 进每层之前,一个学出来的路由器决定它"进不进这一层的注意力 + MLP",不进的直接走残差绕过去。每层只让一部分 token 参与,有固定的计算预算。论文的结果:训练和推理的提速接近一个更小的模型,质量接近基线。
+
+**能省多少**(按读权重的口径):batch=1 的 decode 是串行的,这个 token 在第 12 层退出,后 20 层的权重就真的不读——只读 37.5%。
+
+**代价**:batch 一大就不灵。只要 batch 里有一个 token 要走满 32 层,这一层的权重就得读,节省就没了;得把退出深度相同的 token 凑进同一个 batch 才能兑现。另外模型必须专门训练,普通模型不能直接早退。
+
+**现状**:以研究为主,目前不是主流推理引擎的默认选项。
+
+### 6.2.3 投机解码:一次读权重,验证好几个 token
+
+**解决什么**:decode 慢不是因为算不动,是因为每个 token 只配 1 次"读权重的机会"——读完 13.5 GB 只干 14 GFLOP 的活,算力闲着 99.7%。那就想办法读一次、多验证几个。
+
+![上:时间线对比,同样一次大模型前向,普通解码出 1 个 token,投机解码平均出 3.36 个;下:加速比随接受率的变化](images/fig7_spec.png)
+
+流程四步:
+
+1. **起草**:小模型(参数量约为大模型的 1/10)自回归连猜 K 个 token。它读的是自己的小权重,便宜
+2. **验证**:大模型把"上下文 + 这 K 个 token"当成一段 prompt,**一次前向**同时给出 K+1 个位置各自的分布。这就是一次长度为 K+1 的 prefill,大模型的权重只读一遍
+3. **接受**:从头往后比,草稿 token 和大模型分布一致的就留下;遇到第一个不一致的停下,那一步直接用大模型自己的输出——白送一个 token
+4. **回滚**:被否决的 token 从 KV cache 里撤掉(第五节 5.2 的第三种情况),回到第 1 步
+
+**无损**:接受和拒绝的规则是一套严格的采样方案(Leviathan et al., 2023),最终输出的分布和大模型自己逐个生成**完全相同**。快了,但没有变笨。
+
+**能省多少**:设每个草稿 token 被接受的概率是 $\alpha$,每轮起草 $K$ 个,则每轮期望产出
+
+$$E[\#\text{accepted}] = \frac{1 - \alpha^{K+1}}{1 - \alpha}$$
+
+再记 $c$ 为"小模型走一步 / 大模型走一步"的耗时比,加速比是
+
+$$\text{speedup} = \frac{1 - \alpha^{K+1}}{(1 - \alpha)\,(K c + 1)}$$
+
+代入 $\alpha = 0.8$、$K = 4$、$c = 0.1$:每轮期望产出 3.36 个 token,耗时 1.4 个大模型步,加速 2.4 倍。
+
+实测数字:Leviathan et al. 报告 2–3 倍;EAGLE-3(2025)论文报告最高 6.5 倍;DeepSeek-V3 用训练时自带的多 token 预测(MTP)模块当草稿模型,第二个 token 的接受率 85%–90%,解码吞吐约 1.8 倍。
+
+**代价与边界**:
+
+- batch 大了不灵。验证那一步本身变成计算受限,多出来的 token 不再"免费"(据公开分析,batch 16 时收益只剩约 1.35 倍)
+- 草稿模型占显存
+- 接受率看任务:代码、公式这类好猜的文本接受率高,自由创作低
+
+**谁在用**:主流推理引擎(vLLM、SGLang)都已内置。这个专栏有一篇专门拆过(投机解码篇)。
+
+### 6.2.4 MoE:只读一部分权重
+
+**解决什么**:模型想变大(知识更多),但每个 token 不想多读权重。
+
+**怎么做**:把每层的 MLP(占参数 2/3 的那部分)复制成 E 份"专家",再加一个路由器(一个小线性层)。每个 token 过来,路由器打分,只选得分最高的 k 个专家参与计算,其余 E−k 个专家的权重**这个 token 根本不读**。第二节讲的"门控"在这里从通道开关升级成了专家开关。
+
+![四个模型的每 token 参数参与占比:稠密 100%,Mixtral 27.6%,DeepSeek-V3 5.5%,Qwen3-Next 3.8%](images/fig8_moe.png)
+
+**能省多少**:
+
+| 模型 | 路由专家数 | 每 token 激活 | 总参数 | 每 token 实际读 | 占比 |
+|---|---|---|---|---|---|
+| Mixtral 8×7B | 8 | 2 | 46.7B | 12.9B | 27.6% |
+| DeepSeek-V3 | 256 + 1 共享 | 8 + 1 | 671B | 37B | 5.5% |
+| Qwen3-Next | 512 + 1 共享 | 10 + 1 | 80B | 3B | 3.8% |
+
+**代价**有三条:
+
+- 显存反而更贵。虽然每个 token 只读 5%,但**全部**专家都得常驻显存——下一个 token 路由到谁,事先不知道。671B 的 DeepSeek-V3 光权重就是 1.3 TB(FP16),只能几十张卡分片,再配上专家之间的 all-to-all 通信
+- 负载均衡。路由器一旦"偏心",几个热门专家被挤爆、其余闲着,节省就没了。训练时要专门加约束(Switch Transformer 的辅助损失、DeepSeek 的无辅助损失均衡)
+- batch 大的时候,一个 batch 里几乎每个专家都会被用到,省的其实是计算量而不是带宽。所以 MoE 的主战场是高吞吐
+
+**谁在用**:Mixtral、DeepSeek-V2/V3、Qwen3 系列、Kimi Linear——主流开源模型几乎都是 MoE。
+
+### 6.2.5 循环深度:多层共用一套权重
+
+**解决什么**:32 层就是 32 套不同的权重。能不能让多层共用一套,把模型做小?
+
+**怎么做**:把"32 层各带一套权重"换成"前奏 + 核心块 + 尾声"三段。Geiping et al.(2025)的 3.5B 模型是这样:2 层前奏 → 4 层的循环核心(只有这一套权重)→ 尾声,训练了约 800B token。训练时每一步的循环次数从一个截断的随机分布里抽,所以这个核心块套几遍都能工作。
+
+**为什么普通模型不能直接循环**:第 5 层的权重,是"默认输入正好是第 4 层的输出"训练出来的。把第 5 层再套一遍,输入就不是它见过的分布了。要循环,必须从训练时就让它适应。
+
+**能省多少**(这里要纠正总览表里容易引起的误会):它省的是**要存多少不同的权重**,不是**每个 token 读多少字节**。核心块每套用一遍,这 4 层的权重就要读一遍;套 R 遍就是读 R 遍。同样深度下,每个 token 读的总字节数和普通模型差不多。
+
+它真正换来的是**另一个东西**:模型很小(3.5B),但"想多久"可以现场决定——难题多套几百遍,简单题少套几遍。这是测试时计算的一个旋钮,不是带宽优化。
+
+**现状**:研究阶段,代表作 Huginn-0125 已开源;还没有主流生产模型采用。更早的思想来源是 Universal Transformer(2018)和 ALBERT 的跨层共享(2019)。
+
+### 6.2.6 把权重放近:Groq、d-Matrix
+
+**解决什么**:前面五招都在"少读"或"一次读、多个用"。第六招直接冲着"读得慢"本身:既然瓶颈是把权重从 HBM 搬进计算单元,那就把权重放到片上 SRAM。
+
+**差多少**:SRAM 就在计算单元旁边,带宽比 HBM 高一到两个数量级。
+
+| | 片上 SRAM 容量 | 带宽 |
+|---|---|---|
+| H100(HBM3) | 80 GB(显存) | 3.35 TB/s |
+| Groq 第一代 LPU | 约 230 MB | 约 80 TB/s |
+| d-Matrix Corsair | 约 4 GB / 卡 | 300 TB/s |
+
+带宽差 24 倍到 90 倍。拿 70B 模型算:FP16 权重 140 GB,在 H100 的 HBM 带宽下读完一遍要 140 GB ÷ 3.35 TB/s ≈ 42 毫秒,上限约 24 token/s。Groq 公开演示的 70B 级模型,单用户解码在 220–300 token/s 量级;Mixtral 8×7B 约 500 token/s(它原生用 8 位精度)。
+
+**代价**有两条:
+
+- 容量小、贵。SRAM 存一个比特要 6 个晶体管,同样的容量比 DRAM 贵得多。Groq 一颗芯片只有 230 MB,装一个 70B 模型要 576 颗芯片(合计约 130–140 GB)
+- 只擅长 decode。prefill 是计算受限,要的是算力和大容量,SRAM 芯片在这上面没有优势。所以这类芯片的定位是"解码加速器",常见做法是 prefill 交给 GPU、decode 交给它
+
+**同类**:Cerebras 的晶圆级引擎(公开规格:片上 SRAM 44 GB、带宽 21 PB/s)走的是同一条路。
+
+### 6.2.7 六种机制放在一起看
+
+| 机制 | 省的是什么 | 代价 | 成熟度 |
+|---|---|---|---|
+| KV cache / 线性注意力 | 上下文的状态:17 GB → 32 MB | 精确召回变差,需混合 | 已量产 |
+| 早退 / LayerSkip / MoD | 浅层就结束的 token 不读深层权重 | 需专门训练,batch 大时失效 | 研究 |
+| 投机解码 | 一次读权重出多个 token(2–3 倍) | 大 batch 失效,占显存 | 已量产 |
+| MoE | 每 token 只读 3%–28% 的参数 | 总显存更大,需负载均衡 | 已量产 |
+| 循环深度 | 要存的权重少,深度可调 | 不省带宽 | 研究 |
+| 片上 SRAM | 读一遍快 24–90 倍 | 容量小,只擅长 decode | 小规模商用 |
+
+没有哪一招单独解决问题,所以真实系统是叠着用的:一个典型的线上模型可能同时是 MoE + 3:1 线性注意力混合,跑在开了投机解码和 prefix caching 的引擎上。
 
 ## 七、来历:2 万亿 token 怎么教会 67 亿个数字
 
@@ -299,4 +462,4 @@ $$L = -\log P(x_{t+1} \mid x_1, \ldots, x_t)$$
 
 ---
 
-*参考:Llama 2: Open Foundation and Fine-Tuned LLMs(Touvron et al.,arXiv:2307.09288,架构超参 d=4096/L=32/中间维 11008/词表 32000/约 2T token);Geva et al., Transformer Feed-Forward Layers Are Key-Value Memories(arXiv:2012.14913);Shazeer, GLU Variants Improve Transformer(arXiv:2002.05202,SwiGLU);Vaswani et al., Attention Is All You Need(arXiv:1706.03762);Qwen3-Next 技术博客(MoE 每 token 激活 3B);Elhoushi et al., LayerSkip(arXiv:2404.16710);Raposo et al., Mixture-of-Depths(arXiv:2404.02258);Geiping et al., Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach(arXiv:2502.05171);vLLM 文档(Automatic Prefix Caching);本系列 argmax 篇(采样数学)、优化器演化篇(AdamW)、投机解码篇、GPU 解剖台第八篇(屋顶线与复用定律)。参数量、KV cache、算术强度均可按文中公式复算。*
+*参考:Llama 2: Open Foundation and Fine-Tuned LLMs(Touvron et al.,arXiv:2307.09288,架构超参 d=4096/L=32/中间维 11008/词表 32000/约 2T token);Geva et al., Transformer Feed-Forward Layers Are Key-Value Memories(arXiv:2012.14913);Shazeer, GLU Variants Improve Transformer(arXiv:2002.05202,SwiGLU);Vaswani et al., Attention Is All You Need(arXiv:1706.03762);Qwen3-Next 技术博客(MoE 每 token 激活 3B);Elhoushi et al., LayerSkip(arXiv:2404.16710);Raposo et al., Mixture-of-Depths(arXiv:2404.02258);Geiping et al., Scaling up Test-Time Compute with Latent Reasoning: A Recurrent Depth Approach(arXiv:2502.05171);Jiang et al., Mixtral of Experts(arXiv:2401.04088);DeepSeek-V3 Technical Report(arXiv:2412.19437,MTP 接受率与 1.8 倍吞吐);Leviathan et al., Fast Inference from Transformers via Speculative Decoding(arXiv:2211.17192);Li et al., EAGLE-3(arXiv:2503.01840);Schuster et al., CALM(arXiv:2207.07061);Srivastava et al., Corsair: An In-Memory Computing Chiplet Architecture(IEEE 2025);Qwen3-Next-80B-A3B 模型卡(Hugging Face);Groq、Cerebras 公开规格与演示;vLLM 文档(Automatic Prefix Caching);本系列 argmax 篇(采样数学)、优化器演化篇(AdamW)、投机解码篇、GPU 解剖台第八篇(屋顶线与复用定律)。参数量、KV cache、算术强度均可按文中公式复算。*
