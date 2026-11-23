@@ -1,8 +1,11 @@
 ---
 title: 同一颗 Tensor Core,为什么有人跑出 17%,有人跑出 98%:搬运指令三代、矩阵乘五代的演进,和 H/B/A 三家卡的真正差别
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108305704993943713
+id: 2108305704993943713
 created: 2026-11-23
+published: 2026-11-23
 tags: [gpu, tensor-core, tma, cp-async, tcgen05, tmem, blackwell, hopper, cdna, fp4, kernel, hardware]
 ---
 
