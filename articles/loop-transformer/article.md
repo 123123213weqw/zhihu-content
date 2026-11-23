@@ -1,8 +1,11 @@
 ---
 title: GLM-5.4 的 Loop Transformer 拆解:78 层怎么跑出 106 层,第二遍到底在干什么,以及它和 CoT、线性注意力、MoE 的真实关系
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108286472902152306
+id: 2108286472902152306
 created: 2026-11-23
+published: 2026-11-23
 tags: [glm, loop-transformer, recurrent-depth, latent-reasoning, architecture, moe, scaling, deep-learning]
 ---
 
