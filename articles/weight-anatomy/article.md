@@ -1,8 +1,11 @@
 ---
 title: 一个权重的一生:7B 参数都是谁、怎么解析词、怎么被 2 万亿 token 教出来的——prefill 批发 8192 次,decode 零售 1 次
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108122144714536450
+id: 2108122144714536450
 created: 2026-11-22
+published: 2026-11-23
 tags: [llm, weights, attention, mlp, pretraining, prefill, decode, transformer]
 ---
 
