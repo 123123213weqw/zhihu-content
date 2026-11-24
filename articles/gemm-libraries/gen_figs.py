@@ -31,14 +31,16 @@ BLUE, RED, GREEN, GRAY, PURP, GOLD, ORANGE = "#2288CC", "#BB3333", "#117733", "#
 
 
 def fig1_fp32():
+    # ceilings use the clock measured under FP32 GEMM load (nvidia-smi), not the nominal boost clock
     labels = ["朴素", "分块", "分块加\n寄存器分块", "Triton\n(真 FP32)", "cuBLAS"]
     colors = ["#c9c9c9", "#9ec5e3", BLUE, GREEN, RED]
     panels = [
-        ("Tesla V100", [1.9, 3.0, 9.1, None, 12.6], [14, 21, 65, None, 89], 14.1),
-        ("RTX 4090 D", [4.6, 4.1, 25.7, 37.5, 49.1], [6, 6, 35, 51, 67], 73.5),
+        ("Tesla V100", [1.9, 3.0, 9.1, None, 12.6], [14, 21, 65, None, 89], 14.1, "1.38 GHz"),
+        ("RTX 4080", [3.0, 2.7, 17.9, 27.4, 34.3], [7, 6, 39, 59, 74], 46.1, "2.37 GHz"),
+        ("RTX 4090 D", [4.6, 4.1, 25.7, 37.5, 49.1], [7, 6, 38, 56, 73], 67.0, "2.30 GHz"),
     ]
-    fig, axes = plt.subplots(1, 2, figsize=(11.8, 4.8))
-    for ax, (name, vals, pcts, ceil) in zip(axes, panels):
+    fig, axes = plt.subplots(1, 3, figsize=(15.6, 4.9))
+    for ax, (name, vals, pcts, ceil, clk) in zip(axes, panels):
         x = np.arange(len(labels))
         for i, (v, c, pc) in enumerate(zip(vals, colors, pcts)):
             if v is None:
@@ -49,39 +51,43 @@ def fig1_fp32():
                     fontweight="bold" if i == 4 else "normal", color="#222222", linespacing=1.35,
                     bbox=dict(fc="white", ec="none", pad=1.0))
         ax.axhline(ceil, color="#444444", lw=1.1, ls="--")
-        ax.text(-0.42, ceil, f"上限 {ceil:.1f} TFLOPS", ha="left", va="bottom", fontsize=8.8,
+        ax.text(-0.42, ceil, f"上限 {ceil:.1f} TFLOPS(实测时钟 {clk})", ha="left", va="bottom", fontsize=8.6,
                 color="#444444", bbox=dict(fc="white", ec="none", pad=1.5))
         ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=8.8)
         ax.set_title(name, fontsize=11.5, fontweight="bold")
         ax.set_ylim(0, ceil * 1.26); ax.set_ylabel("TFLOPS")
         ax.spines[["top", "right"]].set_visible(False)
-    fig.suptitle("单精度矩阵乘 4096×4096×4096:同一个算法,五种做法", fontsize=12.5, fontweight="bold", y=1.02)
+    fig.suptitle("单精度矩阵乘 4096×4096×4096:同一个算法,五种做法,三张卡", fontsize=12.5, fontweight="bold", y=1.02)
     fig.tight_layout()
     fig.savefig(f"{OUT}/fig1_fp32.png"); plt.close(fig)
 
 
 def fig2_fp16():
     sizes = [512, 1024, 2048, 4096, 8192]
-    cub = [20.696, 89.241, 132.731, 140.611, 142.560]
-    tri = [12.466, 87.362, 133.170, 151.813, 152.601]
-    tuned_x, tuned_y = [3, 4], [150.33, 151.17]
-    fig, ax = plt.subplots(figsize=(9.6, 4.9))
-    ax.plot(sizes, cub, "o-", color=RED, lw=2.0, ms=7, label="cuBLAS(默认,启发式选 kernel)")
-    ax.plot(sizes, tri, "s-", color=GREEN, lw=2.0, ms=7, label="Triton(16 组配置里最好的一组)")
-    ax.plot(tuned_x and [sizes[i] for i in tuned_x], tuned_y, "D", color=RED, mfc="white", ms=9, mew=2.0,
-            ls="none", label="cuBLAS(穷举调优之后)")
-    for s, c, t in zip(sizes, cub, tri):
-        r = t / c
-        ax.annotate(f"{r:.2f} 倍", (s, max(c, t)), textcoords="offset points", xytext=(0, 11), ha="center",
-                    fontsize=9, fontweight="bold", color=GREEN if r >= 1 else RED)
-    ax.text(9200, 7, "数字:Triton 是 cuBLAS 默认的几倍(绿色:超过,红色:不到)", fontsize=8.8, color="#555555", ha="right")
-    ax.set_xscale("log", base=2); ax.set_xticks(sizes); ax.set_xticklabels([str(s) for s in sizes])
-    ax.minorticks_off()
-    ax.set_xlabel("矩阵大小(N × N × N)"); ax.set_ylabel("TFLOPS")
-    ax.set_ylim(0, 182); ax.set_xlim(430, 9700)
-    ax.set_title("RTX 4090 D 上的半精度矩阵乘", fontsize=12, fontweight="bold", pad=10)
-    ax.legend(loc="upper left", fontsize=9.4)
-    ax.spines[["top", "right"]].set_visible(False)
+    panels = [
+        ("RTX 4080", [44.7, 77.7, 83.5, 92.5, 101.0], [23.1, 68.5, 88.5, 99.9, 103.7], [100.1, 101.5], 120),
+        ("RTX 4090 D", [20.7, 89.2, 132.7, 140.6, 142.6], [12.5, 87.4, 133.2, 151.8, 152.6], [150.3, 151.2], 178),
+    ]
+    fig, axes = plt.subplots(1, 2, figsize=(12.6, 4.9))
+    for ax, (name, cub, tri, tuned, ymax) in zip(axes, panels):
+        ax.plot(sizes, cub, "o-", color=RED, lw=2.0, ms=7, label="cuBLAS(默认,启发式选 kernel)")
+        ax.plot(sizes, tri, "s-", color=GREEN, lw=2.0, ms=7, label="Triton(16 组配置里最好的一组)")
+        ax.plot([sizes[3], sizes[4]], tuned, "D", color=RED, mfc="white", ms=9, mew=2.0, ls="none",
+                label="cuBLAS(穷举调优之后)")
+        for s_, c_, t_ in zip(sizes, cub, tri):
+            r = t_ / c_
+            ax.annotate(f"{r:.2f} 倍", (s_, max(c_, t_)), textcoords="offset points", xytext=(0, 11), ha="center",
+                        fontsize=9, fontweight="bold", color=GREEN if r >= 1 else RED,
+                        bbox=dict(fc="white", ec="none", pad=1.0))
+        ax.set_xscale("log", base=2); ax.set_xticks(sizes); ax.set_xticklabels([str(v) for v in sizes])
+        ax.minorticks_off()
+        ax.set_xlabel("矩阵大小(N × N × N)"); ax.set_ylabel("TFLOPS")
+        ax.set_ylim(0, ymax); ax.set_xlim(430, 9700)
+        ax.set_title(name + " 上的半精度矩阵乘", fontsize=11.5, fontweight="bold", pad=10)
+        ax.legend(loc="upper left", fontsize=9.2)
+        ax.spines[["top", "right"]].set_visible(False)
+    axes[1].text(9200, 6, "数字:Triton 是 cuBLAS 默认的几倍(绿色:超过,红色:不到)", fontsize=8.6, color="#555555", ha="right")
+    fig.tight_layout()
     fig.savefig(f"{OUT}/fig2_fp16.png"); plt.close(fig)
 
 
