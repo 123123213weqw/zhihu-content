@@ -1,0 +1,177 @@
+{
+ "gpu": "NVIDIA GeForce RTX 4090 D",
+ "torch": "2.14.1+cu130",
+ "shape": {
+  "layers": 32,
+  "kv_heads": 32,
+  "head_dim": 128,
+  "batch": 1
+ },
+ "bytes_per_token_all_layers": 524288,
+ "warmup_seconds": 7.0,
+ "gpu_after_warmup": {
+  "sm_clock_mhz": 2520,
+  "mem_clock_mhz": 10501,
+  "power_w": 76.01,
+  "temp_c": 35,
+  "util_pct": 38
+ },
+ "points": [
+  {
+   "n": 128,
+   "bytes_moved_per_step": {
+    "cat": 135266304,
+    "static": 524288,
+    "paged": 524288
+   },
+   "cat_us": [
+    222.62,
+    222.87,
+    222.72,
+    218.47,
+    218.27
+   ],
+   "static_us": [
+    93.39,
+    93.43,
+    93.49,
+    87.45,
+    87.55
+   ],
+   "paged_us": [
+    54.21,
+    54.21,
+    54.17,
+    50.84,
+    50.74
+   ],
+   "cat_us_median": 222.62,
+   "static_us_median": 93.39,
+   "paged_us_median": 54.17,
+   "gpu": {
+    "sm_clock_mhz": 2520,
+    "mem_clock_mhz": 10501,
+    "power_w": 77.95,
+    "temp_c": 35,
+    "util_pct": 81
+   }
+  },
+  {
+   "n": 512,
+   "bytes_moved_per_step": {
+    "cat": 537919488,
+    "static": 524288,
+    "paged": 524288
+   },
+   "cat_us": [
+    569.24,
+    569.53,
+    569.24,
+    568.99,
+    569.24
+   ],
+   "static_us": [
+    87.45,
+    87.5,
+    87.4,
+    87.45,
+    87.45
+   ],
+   "paged_us": [
+    50.69,
+    50.74,
+    50.69,
+    50.67,
+    50.59
+   ],
+   "cat_us_median": 569.24,
+   "static_us_median": 87.45,
+   "paged_us_median": 50.69,
+   "gpu": {
+    "sm_clock_mhz": 2520,
+    "mem_clock_mhz": 10501,
+    "power_w": 111.23,
+    "temp_c": 38,
+    "util_pct": 81
+   }
+  },
+  {
+   "n": 2048,
+   "bytes_moved_per_step": {
+    "cat": 2148532224,
+    "static": 524288,
+    "paged": 524288
+   },
+   "cat_us": [
+    2295.45,
+    2296.57,
+    2295.5,
+    2295.35,
+    2295.18
+   ],
+   "static_us": [
+    87.45,
+    87.4,
+    87.39,
+    87.4,
+    87.55
+   ],
+   "paged_us": [
+    50.59,
+    50.64,
+    50.68,
+    50.73,
+    50.68
+   ],
+   "cat_us_median": 2295.45,
+   "static_us_median": 87.4,
+   "paged_us_median": 50.68,
+   "gpu": {
+    "sm_clock_mhz": 2700,
+    "mem_clock_mhz": 10501,
+    "power_w": 197.01,
+    "temp_c": 39,
+    "util_pct": 100
+   }
+  },
+  {
+   "n": 8192,
+   "bytes_moved_per_step": {
+    "cat": 8590983168,
+    "static": 524288,
+    "paged": 524288
+   },
+   "cat_us": [
+    9236.27,
+    9234.02,
+    9236.99,
+    9235.87,
+    9259.47
+   ],
+   "static_us": [
+    87.4,
+    87.35,
+    87.45,
+    87.4,
+    87.4
+   ],
+   "paged_us": [
+    50.63,
+    50.57,
+    50.69,
+    50.59,
+    50.64
+   ],
+   "cat_us_median": 9236.27,
+   "static_us_median": 87.4,
+   "paged_us_median": 50.63,
+   "gpu": {
+    "sm_clock_mhz": 2685,
+    "mem_clock_mhz": 10501,
+    "power_w": 204.96,
+    "temp_c": 41,
+    "util_pct": 92
+   }
+  }
+ ]
+}

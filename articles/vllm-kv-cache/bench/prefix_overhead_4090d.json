@@ -1,0 +1,686 @@
+{
+ "gpu": "NVIDIA GeForce RTX 4090 D",
+ "vllm": "0.34.0",
+ "model": "/data/wangyue/models/Llama-3.1-8B-Instruct",
+ "workloads": [
+  {
+   "name": "短进短出",
+   "input_len": 64,
+   "output_len": 32,
+   "concurrency": 256,
+   "num_prompts": 2000
+  },
+  {
+   "name": "解码为主",
+   "input_len": 512,
+   "output_len": 512,
+   "concurrency": 32,
+   "num_prompts": 128
+  },
+  {
+   "name": "预填充为主",
+   "input_len": 4096,
+   "output_len": 32,
+   "concurrency": 8,
+   "num_prompts": 128
+  }
+ ],
+ "configs": {
+  "off": [
+   "--no-enable-prefix-caching"
+  ],
+  "on": []
+ },
+ "rounds": [
+  {
+   "round": 0,
+   "config": "off",
+   "warmup_seconds": 8.194,
+   "runs": [
+    {
+     "seconds": 22.971,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2786.1,
+     "total_tps": 8358.2,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2370,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 425.2,
+      "temp_c_max": 66
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.888,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1263.0,
+     "total_tps": 2526.1,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 427.5,
+      "temp_c_max": 68
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.372,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7616.7,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 430.4,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 0,
+   "config": "on",
+   "warmup_seconds": 8.195,
+   "runs": [
+    {
+     "seconds": 22.968,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2786.5,
+     "total_tps": 8359.5,
+     "prefix_cache_queries": 128000,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2355,
+      "sm_clock_mhz_max": 2490,
+      "power_w_max": 427.9,
+      "temp_c_max": 69
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.94,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1261.8,
+     "total_tps": 2523.5,
+     "prefix_cache_queries": 65536,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2520,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 433.3,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.453,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7607.8,
+     "prefix_cache_queries": 524288,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 33,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 433.2,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 1,
+   "config": "on",
+   "warmup_seconds": 8.269,
+   "runs": [
+    {
+     "seconds": 23.112,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2769.1,
+     "total_tps": 8307.2,
+     "prefix_cache_queries": 128000,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2325,
+      "sm_clock_mhz_max": 2505,
+      "power_w_max": 426.1,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.976,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1260.9,
+     "total_tps": 2521.8,
+     "prefix_cache_queries": 65536,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2385,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 427.4,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.455,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7607.5,
+     "prefix_cache_queries": 524288,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 431.1,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 1,
+   "config": "off",
+   "warmup_seconds": 8.245,
+   "runs": [
+    {
+     "seconds": 23.061,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2775.3,
+     "total_tps": 8325.9,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2355,
+      "sm_clock_mhz_max": 2490,
+      "power_w_max": 429.9,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.91,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1262.5,
+     "total_tps": 2525.0,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2520,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 425.6,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.401,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7613.4,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 434.5,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 2,
+   "config": "off",
+   "warmup_seconds": 8.234,
+   "runs": [
+    {
+     "seconds": 22.995,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2783.2,
+     "total_tps": 8349.7,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 12,
+      "sm_clock_mhz_min": 2340,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 425.2,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.934,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1261.9,
+     "total_tps": 2523.8,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 427.3,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.481,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7604.8,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 33,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 437.4,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 2,
+   "config": "on",
+   "warmup_seconds": 8.259,
+   "runs": [
+    {
+     "seconds": 23.164,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2762.9,
+     "total_tps": 8288.7,
+     "prefix_cache_queries": 128000,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2355,
+      "sm_clock_mhz_max": 2550,
+      "power_w_max": 425.8,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.961,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1261.3,
+     "total_tps": 2522.5,
+     "prefix_cache_queries": 65536,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 432.8,
+      "temp_c_max": 68
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.461,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7606.9,
+     "prefix_cache_queries": 524288,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 33,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 426.4,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 3,
+   "config": "on",
+   "warmup_seconds": 8.277,
+   "runs": [
+    {
+     "seconds": 23.016,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2780.6,
+     "total_tps": 8341.9,
+     "prefix_cache_queries": 128000,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2325,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 425.6,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.887,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1263.0,
+     "total_tps": 2526.1,
+     "prefix_cache_queries": 65536,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2475,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 425.6,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.45,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7608.1,
+     "prefix_cache_queries": 524288,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 427.2,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 3,
+   "config": "off",
+   "warmup_seconds": 8.222,
+   "runs": [
+    {
+     "seconds": 23.039,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2777.9,
+     "total_tps": 8333.7,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2325,
+      "sm_clock_mhz_max": 2490,
+      "power_w_max": 434.4,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.873,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1263.4,
+     "total_tps": 2526.8,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 426.0,
+      "temp_c_max": 69
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.484,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 58.9,
+     "total_tps": 7604.4,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 427.8,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 4,
+   "config": "off",
+   "warmup_seconds": 8.266,
+   "runs": [
+    {
+     "seconds": 22.945,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2789.3,
+     "total_tps": 8367.8,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2325,
+      "sm_clock_mhz_max": 2475,
+      "power_w_max": 443.9,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.909,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1262.5,
+     "total_tps": 2525.0,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 425.8,
+      "temp_c_max": 68
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.42,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7611.5,
+     "prefix_cache_queries": 0,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 34,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 428.8,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  },
+  {
+   "round": 4,
+   "config": "on",
+   "warmup_seconds": 8.265,
+   "runs": [
+    {
+     "seconds": 23.002,
+     "requests": 2000,
+     "output_tokens": 64000,
+     "prompt_tokens": 128000,
+     "output_tps": 2782.3,
+     "total_tps": 8347.0,
+     "prefix_cache_queries": 128000,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 11,
+      "sm_clock_mhz_min": 2340,
+      "sm_clock_mhz_max": 2550,
+      "power_w_max": 425.2,
+      "temp_c_max": 68
+     },
+     "name": "短进短出"
+    },
+    {
+     "seconds": 51.856,
+     "requests": 128,
+     "output_tokens": 65536,
+     "prompt_tokens": 65536,
+     "output_tps": 1263.8,
+     "total_tps": 2527.6,
+     "prefix_cache_queries": 65536,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 25,
+      "sm_clock_mhz_min": 2430,
+      "sm_clock_mhz_max": 2670,
+      "power_w_max": 426.1,
+      "temp_c_max": 68
+     },
+     "name": "解码为主"
+    },
+    {
+     "seconds": 69.392,
+     "requests": 128,
+     "output_tokens": 4096,
+     "prompt_tokens": 524288,
+     "output_tps": 59.0,
+     "total_tps": 7614.5,
+     "prefix_cache_queries": 524288,
+     "prefix_cache_hits": 0,
+     "preemptions": 0,
+     "clocks": {
+      "samples": 33,
+      "sm_clock_mhz_min": 2445,
+      "sm_clock_mhz_max": 2655,
+      "power_w_max": 433.4,
+      "temp_c_max": 70
+     },
+     "name": "预填充为主"
+    }
+   ],
+   "kv_cache_tokens": 47616
+  }
+ ]
+}

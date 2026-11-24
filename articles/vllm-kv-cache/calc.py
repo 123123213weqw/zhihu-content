@@ -97,3 +97,49 @@ print("\n== 9. Extensible cache")
 print(f"MiniMax-M3 on H200: 433k -> 672k tokens = {(672 / 433 - 1):.1%} more")
 print(f"margin floor {(1 << 30) / GiB:.0f} GiB; commit granule {(2 << 20) / MiB:.0f} MiB; "
       f"utilization default 0.92 -> 1.0")
+
+print("\n== 10. 朴素写法的算量(b = 一个 token 的 KV,全部层相加,Llama-2-7B)")
+b, N, Lmax = v2, 4096, 4096
+written_cat = b * (N * (N + 1) // 2 + N)      # 每步拼接:第 n 步要写 n + 1 个 token
+written_once = b * N                           # 其余写法:每个 token 只写一次
+print(f"拼接 {N} 步:累计写入 {written_cat / 2**40:.2f} TiB,是 KV 缓存本身({written_once / 2**30:.0f} GiB)的 "
+      f"{written_cat / written_once:.0f} 倍")
+for n in (128, 512, 2048, 8192):
+    print(f"  当前长度 {n:5d}:一步要搬(读一遍再写一遍) {2 * b * (n + 1) / 2**30:.2f} GiB")
+dbl = sum(2 ** k for k in range(13))           # 倍增扩容:1, 2, 4, ..., 4096 各写一次
+print(f"倍增扩容到 {N}:累计写入 {dbl * b / 2**30:.2f} GiB,不到最终大小的 2 倍;最后一刻占用在 50% 到 100% 之间")
+for actual in (256, 512, 1024):
+    print(f"  按最大长度 {Lmax} 预留,实际 {actual:4d}:利用率 {actual / Lmax:.1%},浪费 {(Lmax - actual) * b / 2**30:.2f} GiB")
+print(f"分页,块 64:每个请求最多浪费 63 个 token = {63 * b / 2**20:.1f} MiB")
+
+print("\n== 11. 实测(bench/naive_vs_paged_4090d.json,RTX 4090 D)")
+import json
+import os
+import statistics
+import time
+pts = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "bench", "naive_vs_paged_4090d.json")))["points"]
+xs = [p["n"] for p in pts]
+cat = [p["cat_us_median"] for p in pts]
+xbar, ybar = statistics.mean(xs), statistics.mean(cat)
+slope = sum((x - xbar) * (y - ybar) for x, y in zip(xs, cat)) / sum((x - xbar) ** 2 for x in xs)
+intercept = ybar - slope * xbar
+cum = {"拼接": intercept * N + slope * N * (N - 1) / 2, "预分配": pts[-1]["static_us_median"] * N, "分页": pts[-1]["paged_us_median"] * N}
+for k, v in cum.items():
+    print(f"  生成 {N} 个 token,{k}:每步 {pts[-1][{'拼接': 'cat', '预分配': 'static', '分页': 'paged'}[k] + '_us_median']} 微秒(长度 8192),"
+          f"累计 {v / 1e6:.2f} 秒")
+print(f"  拼接的拟合:t = {intercept:.1f} + {slope:.3f} x n(微秒);长度 8192 时一步搬 {2 * b * 8193 / 2**30:.2f} GiB,"
+      f"折合 {2 * b * 8193 / (pts[-1]['cat_us_median'] * 1e-6) / 1e9:.0f} GB/s")
+
+print("\n== 12. 算一个块的哈希要多久(vLLM 的 sha256:先 pickle,再哈希;本机 CPU,7 次取中位数)")
+import hashlib
+import pickle
+import random
+block = (random.randbytes(32), tuple(random.randrange(16, 128_000) for _ in range(64)), None)
+runs = []
+for _ in range(7):
+    t0 = time.perf_counter()
+    for _ in range(20000):
+        hashlib.sha256(pickle.dumps(block, protocol=pickle.HIGHEST_PROTOCOL)).digest()
+    runs.append((time.perf_counter() - t0) / 20000)
+per_block = statistics.median(runs) * 1e6
+print(f"  每块 {per_block:.2f} 微秒,摊到每个 token {per_block / 64:.3f} 微秒;4096 个 token 的提示词 64 块,共 {per_block * 64 / 1000:.2f} 毫秒")

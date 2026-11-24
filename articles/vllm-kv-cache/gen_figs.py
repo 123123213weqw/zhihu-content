@@ -9,17 +9,22 @@ fig4_pool.png      -- block pool: ref counts, the free queue (non-cached LIFO at
 fig5_alloc.png     -- allocate_slots: the per-step allocation flow and what the scheduler does when it returns None
 fig6_hybrid.png    -- hybrid models: KV cache groups with equal page size share one pool; one logical block = several pieces
 fig7_startup.png   -- how the KV cache size is decided at startup: estimate-based vs. the extensible (measured) cache
+fig8_naive.png     -- measured cost of writing one token's KV: torch.cat (grows with length) vs. preallocated vs. paged
+fig9_calls.png     -- the call chain: scheduler -> KV cache manager -> coordinator -> block pool -> worker -> attention kernel
 
 Run:  python3 gen_figs.py   -> ./images/
 """
 from __future__ import annotations
+import json
 import os
+import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle, FancyArrowPatch
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "images")
+BENCH = os.environ.get("KV_BENCH", os.path.join(os.path.dirname(os.path.abspath(__file__)), "bench"))
 os.makedirs(OUT, exist_ok=True)
 plt.rcParams.update({
     "font.family": "serif",
@@ -388,6 +393,141 @@ def fig7_startup():
     fig.savefig(f"{OUT}/fig7_startup.png"); plt.close(fig)
 
 
+# ----------------------------------------------------------------------------------------------
+def fig8_naive():
+    data = json.load(open(os.path.join(BENCH, "naive_vs_paged_4090d.json")))
+    pts = data["points"]
+    ns = [p["n"] for p in pts]
+    N = 4096
+    fig, axes = plt.subplots(1, 2, figsize=(13.8, 5.6), gridspec_kw=dict(width_ratios=[1.4, 1]))
+    ax = axes[0]
+    for k, c, t in (("cat", ORANGE, "拼接(torch.cat)"), ("static", BLUE, "预分配,原地写"), ("paged", GREEN, "分页,按槽位散写")):
+        ys = [p[f"{k}_us_median"] for p in pts]
+        ax.plot(ns, ys, "-o", color=c, lw=2.2 if k == "cat" else 1.4, ms=5, label=t)
+        for x, y in zip(ns, ys):
+            if k == "cat" or x in (ns[0], ns[-1]):
+                if k == "cat":  # 拼接的线往右上走,标签放到左上;第一个点在轴边上,放右下
+                    dx, dy, ha = ((7, -13, "left") if x == ns[0] else ((7, 9, "left") if x == ns[-1] else (-9, 7, "right")))
+                elif x == ns[0]:  # 第一个点:标签放到左边,免得和别的挤在一起
+                    dx, dy, ha = -7, 5 if k == "static" else -12, "right"
+                else:
+                    dx, dy, ha = 7, 5 if k == "static" else -12, "left"
+                ax.annotate(f"{y:,.0f}", (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=8.6, color=c,
+                            fontweight="bold" if k == "cat" else "normal", ha=ha)
+    ax.set_xscale("log", base=2); ax.set_yscale("log")
+    ax.set_xticks(ns); ax.set_xticklabels([f"{n:,}" for n in ns]); ax.minorticks_off()
+    ax.set_ylim(35, 16000)
+    ax.set_xlabel("当前长度 n(token,对数轴)")
+    ax.set_ylabel("写一个 token 的 KV,每步耗时(微秒,对数轴)")
+    ax.set_title("实测:拼接写法随长度线性变慢,另两种是平的", fontsize=11.5, fontweight="bold", loc="left", pad=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(loc="upper left", fontsize=9.4)
+
+    ax = axes[1]
+    slope, intercept = np.polyfit(ns, [p["cat_us_median"] for p in pts], 1)
+    cum = [("拼接", (intercept * N + slope * N * (N - 1) / 2) / 1e6, ORANGE),
+           ("预分配,原地写", pts[-1]["static_us_median"] * N / 1e6, BLUE),
+           ("分页,按槽位散写", pts[-1]["paged_us_median"] * N / 1e6, GREEN)]
+    ys = np.arange(len(cum))[::-1]
+    ax.barh(ys, [c[1] for c in cum], color=[c[2] for c in cum], height=0.55, alpha=0.85)
+    ax.set_xscale("log")
+    ax.set_yticks(ys); ax.set_yticklabels([c[0] for c in cum], fontsize=9.6)
+    ax.set_xlim(0.1, 60)
+    for y, c in zip(ys, cum):
+        ax.text(c[1] * 1.25, y, f"{c[1]:.2f} 秒", va="center", ha="left", fontsize=9.6, color=c[2], fontweight="bold")
+    ax.set_xlabel("累计耗时(秒,对数轴)")
+    ax.set_title(f"生成 {N:,} 个 token,光写 KV 的累计耗时", fontsize=11.5, fontweight="bold", loc="left", pad=10)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.text(0.97, 0.05, f"RTX 4090 D,32 层,batch = 1,CUDA Graph 计时\n右图按左图实测的每步耗时累加", transform=ax.transAxes,
+            ha="right", va="bottom", fontsize=8.6, color="#666666", linespacing=1.6)
+    fig.tight_layout(w_pad=3.0)
+    fig.savefig(f"{OUT}/fig8_naive.png"); plt.close(fig)
+
+
+# ----------------------------------------------------------------------------------------------
+def fig9_calls():
+    fig, ax = plt.subplots(figsize=(12.0, 8.9))  # 比别的图窄:这张字多,窄一点字才看得清
+    ax.set_xlim(0, 138); ax.set_ylim(-2.5, 101.4); ax.axis("off")
+    ax.text(69, 99.9, "调用链:一个块号从调度到写进显存,要过哪些函数(v0.34.0)", ha="center", va="center", fontsize=13, fontweight="bold")
+    XA, XB, XC, W = 1.5, 50.5, 99.5, 36.0
+    H, PITCH, Y0 = 9.4, 11.4, 80.0
+
+    def yb(i):
+        return Y0 - PITCH * i
+
+    for x, title, c, fc in ((XA, "① 调度器(引擎核心进程,在 CPU 上)", ORANGE, "#fdf6f0"),
+                            (XB, "② KV 缓存管理(和调度器同一个进程)", GREEN, "#f2f8f2"),
+                            (XC, "③ GPU 工作进程", BLUE, "#f0f6fb")):
+        ax.add_patch(FancyBboxPatch((x - 1.4, -1.6), W + 2.8, yb(0) + H + 2.6, boxstyle="round,pad=0.02,rounding_size=0.8",
+                                    fc=fc, ec=c, lw=1.0))
+        ax.text(x + W / 2, 96.5, title, ha="center", va="center", fontsize=10.8, fontweight="bold", color=c)
+
+    def box(x, i, fn, where, what, c, fs=8.8):
+        y = yb(i)
+        ax.add_patch(FancyBboxPatch((x, y), W, H, boxstyle="round,pad=0.02,rounding_size=0.5", fc="white", ec=c, lw=1.2))
+        if "\n" in fn:  # 名字太长的拆成两行:类名一行,方法一行
+            top, bottom = fn.split("\n")
+            ax.text(x + 1.3, y + H - 1.8, top, ha="left", va="center", fontsize=fs, fontweight="bold", color="#111111")
+            ax.text(x + 1.3, y + H - 3.9, bottom, ha="left", va="center", fontsize=fs, fontweight="bold", color="#111111")
+            ax.text(x + 1.3, y + H - 6.1, where, ha="left", va="center", fontsize=7.4, color=c)
+            ax.text(x + 1.3, y + 1.5, what, ha="left", va="center", fontsize=8.2, color="#333333")
+            return
+        ax.text(x + 1.3, y + H - 2.2, fn, ha="left", va="center", fontsize=fs, fontweight="bold", color="#111111")
+        ax.text(x + 1.3, y + H - 4.9, where, ha="left", va="center", fontsize=7.8, color=c)
+        ax.text(x + 1.3, y + 2.0, what, ha="left", va="center", fontsize=8.2, color="#333333")
+
+    def down(x, i):
+        arrow(ax, x + 4.0, yb(i), x + 4.0, yb(i + 1) + H + 0.15, GRAY, lw=1.3)
+
+    def note(x, i, lines, c):
+        y = yb(i + 2) - 0.2
+        ax.add_patch(FancyBboxPatch((x, y), W, 2 * PITCH + H - 1.6, boxstyle="round,pad=0.02,rounding_size=0.5", fc="white",
+                                    ec=c, lw=1.0, ls="--"))
+        for k, t in enumerate(lines):
+            ax.text(x + 1.3, y + (2 * PITCH + H - 1.6) - 2.2 - 2.9 * k, t, ha="left", va="center", fontsize=8.0,
+                    color="#444444", fontweight="bold" if k == 0 else "normal")
+
+    # column 1: scheduler
+    box(XA, 0, "EngineCore.step()", "vllm/v1/engine/core.py:713", "一步三段:调度,执行,更新", ORANGE)
+    box(XA, 1, "Scheduler.schedule()", "vllm/v1/core/sched/scheduler.py:716", "定这一步每个请求算几个 token", ORANGE)
+    box(XA, 2, "get_computed_blocks()", "scheduler.py:691", "等待中的请求,先查前缀命中", ORANGE)
+    box(XA, 3, "allocate_slots()", "scheduler.py:930, 1497", "位置不够就等待,或者抢占", ORANGE)
+    for i in range(3):
+        down(XA, i)
+    note(XA, 5, ["每步算完、请求结束的时候:", "cache_blocks(2468):登记填满的块", "free(3229):倒序还块"], ORANGE)
+    # column 2: KV cache management
+    box(XB, 3, "KVCacheManager.allocate_slots()", "vllm/v1/core/kv_cache_manager.py:401", "先还滑出窗口的,再比空闲块数", GREEN)
+    box(XB, 4, "KVCacheCoordinator\n.allocate_new_blocks()", "kv_cache_coordinator.py:315", "转给每一种层自己的管理器", GREEN)
+    box(XB, 5, "SingleTypeKVCacheManager\n.allocate_new_blocks()", "single_type_kv_cache_manager.py:375", "需要的块数,减去已有的块数", GREEN)
+    box(XB, 6, "BlockPool.get_new_blocks()", "block_pool.py:681", "带哈希的块,取到就是淘汰", GREEN)
+    box(XB, 7, "FreeKVCacheBlockQueue.popleft_n()", "kv_cache_utils.py:343", "摘下空闲队列头的 n 个块", GREEN)
+    for i in range(3, 7):
+        down(XB, i)
+    # column 3: worker
+    box(XC, 1, "update_requests()", "worker/gpu/model_runner.py:1340", "从调度结果里取出新块号", BLUE)
+    box(XC, 2, "BlockTables.append_block_ids()", "vllm/v1/worker/gpu/block_table.py:125", "接到块表这一行的后面,只追加", BLUE)
+    box(XC, 3, "prepare_attn()", "model_runner.py:1672", "收拢块表,给每个 token 算槽位", BLUE)
+    box(XC, 4, "reshape_and_cache_flash()", "attention/backends/flash_attn.py:1490", "每层算完 K、V,按槽位散写进缓存", BLUE)
+    for i in range(1, 4):
+        down(XC, i)
+    note(XC, 6, ["读的时候", "注意力 kernel 拿着块表和每个请求的长度,", "一块一块地取"], BLUE)
+
+    # across the columns
+    arrow(ax, XA + W, yb(3) + 6.6, XB, yb(3) + 6.6, GREEN, lw=1.6)
+    ax.text((XA + W + XB) / 2, yb(3) + 7.3, "调用", ha="center", va="bottom", fontsize=8.0, color=GREEN, fontweight="bold")
+    arrow(ax, XB, yb(3) + 2.8, XA + W, yb(3) + 2.8, RED, lw=1.4, ls="--")
+    ax.text((XA + W + XB) / 2 + 0.8, yb(3) - 0.2, "新块号或 None", ha="center", va="top", fontsize=6.8, color=RED)
+    arrow(ax, XA + W, yb(1) + 6.6, XC, yb(1) + 6.6, BLUE, lw=1.6)
+    ax.text((XA + W + XC) / 2, yb(1) + 7.3, "调度结果:新块号是整数,经共享内存发过去", ha="center", va="bottom", fontsize=8.6, color=BLUE)
+    # 返回:从工作进程一列的顶上绕回去,走各列边框之间的空当
+    xm, ytop = (XA + W + XB) / 2 + 0.4, yb(0) + H + 2.2
+    ax.plot([XC + W / 2, XC + W / 2, xm, xm], [yb(1) + H, ytop, ytop, yb(0) + H / 2], color=GRAY, lw=1.3, ls="--")
+    arrow(ax, xm, yb(0) + H / 2, XA + W, yb(0) + H / 2, GRAY, lw=1.3, ls="--")
+    ax.text((xm + XC + W / 2) / 2, ytop + 0.6, "新 token 回到引擎,进下一步", ha="center", va="bottom", fontsize=8.6, color=GRAY)
+    fig.savefig(f"{OUT}/fig9_calls.png"); plt.close(fig)
+
+
 if __name__ == "__main__":
     fig1_blocks(); fig2_layout(); fig3_hash(); fig4_pool(); fig5_alloc(); fig6_hybrid(); fig7_startup()
+    fig8_naive(); fig9_calls()
     print("done ->", OUT)
