@@ -1,10 +1,12 @@
 ---
 title: vLLM 0.34 是怎么搭起来的:vllm serve 一敲,起了哪几个进程,一个请求要过几道手
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108648884092265647
+id: 2108648884092265647
 created: 2026-11-24
+published: 2026-11-24
 tags: [vllm, inference, llm-serving, engine, scheduler, kv-cache, paged-attention, source-code]
-column: c_2108645240148185763
 ---
 
 敲一行 `vllm serve`,等上一会儿,屏幕上出现一行 `Uvicorn running on http://0.0.0.0:8000`。
