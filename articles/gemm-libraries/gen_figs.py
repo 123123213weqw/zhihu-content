@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Figures for the gemm-libraries article. Every number is a measurement made on 2026-11-24 (see the article's references).
+"""Figures for the gemm-libraries article (teaching version: two figures).
 
-fig1_fp32.png   -- FP32 4096^3 GEMM on V100 and RTX 4090 D: naive / tiled / register-tiled / Triton / cuBLAS, with each card's ceiling
-fig2_fp16.png   -- FP16 GEMM on RTX 4090 D vs size: cuBLAS default, cuBLAS exhaustive-tuned, Triton best-of-16
-fig3_layers.png -- who decides each of the five layers, for each of the five approaches
+fig1_layers.png    -- who decides each of the five layers of a GEMM, for each of the five approaches (author's synthesis)
+fig2_selection.png -- why the "selection" layer matters: FP16 GEMM on two RTX cards, cuBLAS default vs exhaustively tuned vs Triton best-of-16
+                      (every number is a measurement made on 2026-11-24; see the article's references)
 
 Run:  python3 gen_figs.py   -> ./images/
 """
@@ -30,39 +30,7 @@ plt.rcParams.update({
 BLUE, RED, GREEN, GRAY, PURP, GOLD, ORANGE = "#2288CC", "#BB3333", "#117733", "#666666", "#995588", "#b8922e", "#d97742"
 
 
-def fig1_fp32():
-    # ceilings use the clock measured under FP32 GEMM load (nvidia-smi), not the nominal boost clock
-    labels = ["朴素", "分块", "分块加\n寄存器分块", "Triton\n(真 FP32)", "cuBLAS"]
-    colors = ["#c9c9c9", "#9ec5e3", BLUE, GREEN, RED]
-    panels = [
-        ("Tesla V100", [1.9, 3.0, 9.1, None, 12.6], [14, 21, 65, None, 89], 14.1, "1.38 GHz"),
-        ("RTX 4080", [3.0, 2.7, 17.9, 27.4, 34.3], [7, 6, 39, 59, 74], 46.1, "2.37 GHz"),
-        ("RTX 4090 D", [4.6, 4.1, 25.7, 37.5, 49.1], [7, 6, 38, 56, 73], 67.0, "2.30 GHz"),
-    ]
-    fig, axes = plt.subplots(1, 3, figsize=(15.6, 4.9))
-    for ax, (name, vals, pcts, ceil, clk) in zip(axes, panels):
-        x = np.arange(len(labels))
-        for i, (v, c, pc) in enumerate(zip(vals, colors, pcts)):
-            if v is None:
-                ax.text(i, ceil * 0.04, "编译不过", ha="center", va="bottom", fontsize=8.6, color="#999999")
-                continue
-            ax.bar(i, v, 0.62, color=c, ec="white", lw=0.8)
-            ax.text(i, v + ceil * 0.025, f"{v:.1f}\n上限的 {pc}%", ha="center", va="bottom", fontsize=8.6,
-                    fontweight="bold" if i == 4 else "normal", color="#222222", linespacing=1.35,
-                    bbox=dict(fc="white", ec="none", pad=1.0))
-        ax.axhline(ceil, color="#444444", lw=1.1, ls="--")
-        ax.text(-0.42, ceil, f"上限 {ceil:.1f} TFLOPS(实测时钟 {clk})", ha="left", va="bottom", fontsize=8.6,
-                color="#444444", bbox=dict(fc="white", ec="none", pad=1.5))
-        ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=8.8)
-        ax.set_title(name, fontsize=11.5, fontweight="bold")
-        ax.set_ylim(0, ceil * 1.26); ax.set_ylabel("TFLOPS")
-        ax.spines[["top", "right"]].set_visible(False)
-    fig.suptitle("单精度矩阵乘 4096×4096×4096:同一个算法,五种做法,三张卡", fontsize=12.5, fontweight="bold", y=1.02)
-    fig.tight_layout()
-    fig.savefig(f"{OUT}/fig1_fp32.png"); plt.close(fig)
-
-
-def fig2_fp16():
+def fig2_selection():
     sizes = [512, 1024, 2048, 4096, 8192]
     panels = [
         ("RTX 4080", [44.7, 77.7, 83.5, 92.5, 101.0], [23.1, 68.5, 88.5, 99.9, 103.7], [100.1, 101.5], 120),
@@ -88,10 +56,10 @@ def fig2_fp16():
         ax.spines[["top", "right"]].set_visible(False)
     axes[1].text(9200, 6, "数字:Triton 是 cuBLAS 默认的几倍(绿色:超过,红色:不到)", fontsize=8.6, color="#555555", ha="right")
     fig.tight_layout()
-    fig.savefig(f"{OUT}/fig2_fp16.png"); plt.close(fig)
+    fig.savefig(f"{OUT}/fig2_selection.png"); plt.close(fig)
 
 
-def fig3_layers():
+def fig1_layers():
     rows = ["① 算法\n要不要切开、换成 GEMV", "② 分块\ntile、流水级数、遍历顺序", "③ 线程和寄存器\n一个线程算几个输出",
             "④ 指令\nTensor Core、异步拷贝", "⑤ 选择\n这个形状用哪个 kernel"]
     cols = ["手写 CUDA", "cuBLAS", "CUTLASS", "Triton", "TVM"]
@@ -131,9 +99,10 @@ def fig3_layers():
         ax.add_patch(FancyBboxPatch((lx, ly - 0.22), 0.9, 0.46, boxstyle="round,pad=0.02", fc=fc, ec=ec, lw=1.2))
         ax.text(lx + 1.08, ly, desc, ha="left", va="center", fontsize=8.8, color="#444444")
         lx += 1.08 + len(desc) * 0.25 + 0.65
-    fig.savefig(f"{OUT}/fig3_layers.png"); plt.close(fig)
+    fig.savefig(f"{OUT}/fig1_layers.png"); plt.close(fig)
+
 
 
 if __name__ == "__main__":
-    fig1_fp32(); fig2_fp16(); fig3_layers()
+    fig1_layers(); fig2_selection()
     print("done ->", OUT)
