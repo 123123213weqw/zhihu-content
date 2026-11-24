@@ -1,0 +1,66 @@
+# cuBLASLt fp16 inputs / fp32 accumulate; heuristic #1 vs best of all enumerated configs; 2026-11-24_13:46:05
+GPU: NVIDIA GeForce RTX 4090 D (SM count 114), N=512 fp16 inputs, 32-bit accumulate
+heuristic list: 8 candidates
+  heuristic #1 (default):    49.19 TFLOPS  algo=21 tile=11 stages=14 splitK=1 red=0 swz=0 inner=0 cluster=0
+enumeration: 25 algo ids, 579 configs checked, 152 pass AlgoCheck, 152 timed, 0.4 s
+  best of all:         51.66 TFLOPS  (1.050x of default)  algo=21 tile=15 stages=12 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #2    50.80 TFLOPS  algo=21 tile=15 stages=25 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #3    50.20 TFLOPS  algo=21 tile=15 stages=18 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #4    49.99 TFLOPS  algo=6 tile=15 stages=17 splitK=1 red=0 swz=0 inner=0 cluster=0
+  of the 15 re-timed candidates, 7 beat the default
+  worst timed config:     6.10 TFLOPS
+  best inside the heuristic list: rank 3,    51.75 TFLOPS (8 of 8 ran)
+  re-timed heuristic #1:    48.91 TFLOPS
+
+GPU: NVIDIA GeForce RTX 4090 D (SM count 114), N=1024 fp16 inputs, 32-bit accumulate
+heuristic list: 8 candidates
+  heuristic #1 (default):    93.35 TFLOPS  algo=21 tile=15 stages=12 splitK=2 red=1 swz=0 inner=0 cluster=0
+enumeration: 25 algo ids, 579 configs checked, 152 pass AlgoCheck, 152 timed, 0.6 s
+  best of all:        100.68 TFLOPS  (1.079x of default)  algo=21 tile=15 stages=12 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #2    90.77 TFLOPS  algo=21 tile=15 stages=25 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #3    89.58 TFLOPS  algo=21 tile=15 stages=18 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #4    88.63 TFLOPS  algo=30 tile=15 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+  of the 15 re-timed candidates, 1 beat the default
+  worst timed config:    12.11 TFLOPS
+  best inside the heuristic list: rank 3,   100.65 TFLOPS (8 of 8 ran)
+  re-timed heuristic #1:    90.80 TFLOPS
+
+GPU: NVIDIA GeForce RTX 4090 D (SM count 114), N=2048 fp16 inputs, 32-bit accumulate
+heuristic list: 8 candidates
+  heuristic #1 (default):   141.57 TFLOPS  algo=21 tile=15 stages=12 splitK=1 red=0 swz=0 inner=0 cluster=0
+enumeration: 25 algo ids, 579 configs checked, 152 pass AlgoCheck, 152 timed, 1.7 s
+  best of all:        141.50 TFLOPS  (1.000x of default)  algo=21 tile=15 stages=12 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #2   132.76 TFLOPS  algo=30 tile=18 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+      #3   132.70 TFLOPS  algo=30 tile=18 stages=0 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #4   132.28 TFLOPS  algo=30 tile=17 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+  of the 15 re-timed candidates, 0 beat the default
+  worst timed config:    13.02 TFLOPS
+  best inside the heuristic list: rank 1,   141.54 TFLOPS (8 of 8 ran)
+  re-timed heuristic #1:   141.18 TFLOPS
+
+GPU: NVIDIA GeForce RTX 4090 D (SM count 114), N=4096 fp16 inputs, 32-bit accumulate
+heuristic list: 8 candidates
+  heuristic #1 (default):   150.88 TFLOPS  algo=5 tile=20 stages=7 splitK=3 red=1 swz=1 inner=0 cluster=0
+enumeration: 25 algo ids, 579 configs checked, 152 pass AlgoCheck, 152 timed, 6.1 s
+  best of all:        153.17 TFLOPS  (1.015x of default)  algo=5 tile=21 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+      #2   153.08 TFLOPS  algo=5 tile=21 stages=0 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #3   153.02 TFLOPS  algo=5 tile=20 stages=0 splitK=1 red=0 swz=0 inner=0 cluster=0
+      #4   153.01 TFLOPS  algo=5 tile=20 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+  of the 15 re-timed candidates, 10 beat the default
+  worst timed config:    13.08 TFLOPS
+  best inside the heuristic list: rank 7,   152.96 TFLOPS (8 of 8 ran)
+  re-timed heuristic #1:   150.38 TFLOPS
+
+GPU: NVIDIA GeForce RTX 4090 D (SM count 114), N=8192 fp16 inputs, 32-bit accumulate
+heuristic list: 8 candidates
+  heuristic #1 (default):   152.94 TFLOPS  algo=6 tile=18 stages=0 splitK=1 red=0 swz=0 inner=0 cluster=0
+enumeration: 25 algo ids, 579 configs checked, 152 pass AlgoCheck, 152 timed, 48.6 s
+  best of all:        153.65 TFLOPS  (1.005x of default)  algo=5 tile=21 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+      #2   153.61 TFLOPS  algo=5 tile=20 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+      #3   153.59 TFLOPS  algo=5 tile=20 stages=7 splitK=1 red=0 swz=1 inner=0 cluster=0
+      #4   153.47 TFLOPS  algo=30 tile=18 stages=0 splitK=1 red=0 swz=1 inner=0 cluster=0
+  of the 15 re-timed candidates, 13 beat the default
+  worst timed config:    13.10 TFLOPS
+  best inside the heuristic list: rank 3,   153.69 TFLOPS (8 of 8 ran)
+  re-timed heuristic #1:   153.19 TFLOPS
+
