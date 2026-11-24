@@ -99,9 +99,9 @@ tags: [gpu, cublas, cutlass, tvm, triton, gemm, kernel, compiler, benchmark, har
 | 4096 | 92.5 | 99.9 | 1.08 倍 | 140.6 | 151.8 | 1.08 倍 |
 | 8192 | 101.0 | 103.7 | 1.03 倍 | 142.6 | 152.6 | 1.07 倍 |
 
-(单位 TFLOPS。这两张卡没有官方的 Tensor 峰值标称,所以只给绝对值。V100 上 cuBLAS 的半精度是 84 TFLOPS。)
+(单位 TFLOPS。这两张 RTX 没有官方的 Tensor 峰值标称,所以只给绝对值。V100 上 cuBLAS 的半精度是 84 TFLOPS。)
 
-两张卡的规律一样:小矩阵 cuBLAS 明显更快,大矩阵 Triton 略胜。
+两张 RTX 的规律一样:小矩阵 cuBLAS 明显更快,大矩阵 Triton 略胜。
 
 但先别急着下结论。我让 cuBLASLt 把候选算法自己跑一遍再选(“穷举调优”):
 
