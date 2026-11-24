@@ -1,8 +1,11 @@
 ---
 title: cuBLAS、CUTLASS、Triton、TVM 该怎么选:四种"算子库"各自好在哪、差在哪
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108574728046887258
+id: 2108574728046887258
 created: 2026-11-24
+published: 2026-11-24
 tags: [gpu, cublas, cutlass, tvm, triton, gemm, kernel, compiler, hardware]
 ---
 
