@@ -1,0 +1,47 @@
+== server-b2048.log
+(EngineCore pid=1091600) INFO 11-25 21:37:45 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='/data/wangyue/models/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='/data/wangyue/models/Llama-3.1-8B-Instruct', skip_tokenizer_i
+(EngineCore pid=1091600) INFO 11-25 21:38:41 [cuda.py:549] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1091600) INFO 11-25 21:44:57 [model_runner.py:441] Model loading took 15.0 GiB memory and 389.922439 seconds
+(EngineCore pid=1091600) INFO 11-25 21:45:52 [gpu_worker.py:795] Available KV cache memory: 6.93 GiB
+(EngineCore pid=1091600) INFO 11-25 21:46:47 [model_runner.py:1216] Graph capturing finished in 40 secs, took 0.50 GiB
+(EngineCore pid=1091600) INFO 11-25 21:47:02 [extensible_kv_cache.py:693] Memory after warmup: 7.29 GiB free, 0.06 GiB committed to the KV cache, 0.54 GiB kept for transient activations (0.27 GiB allocated at peak, 0.54 GiB of torch reservation growth); 744 KV
+(EngineCore pid=1091600) INFO 11-25 21:47:02 [kv_cache_utils.py:1168] GPU KV cache size: 47,616 tokens, Maximum concurrency for 16,384 tokens per request: 2.91x
+(EngineCore pid=1091600) INFO 11-25 21:47:02 [core.py:451] init engine (profile, create kv cache, warmup model) took 124.93 s (compilation: 1.70 s)
+== server-b512.log
+(APIServer pid=1088008) INFO 11-25 21:36:05 [scheduler.py:354] Chunked prefill is enabled with max_num_batched_tokens=512.
+(EngineCore pid=1091619) INFO 11-25 21:37:46 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='/data/wangyue/models/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='/data/wangyue/models/Llama-3.1-8B-Instruct', skip_tokenizer_i
+(EngineCore pid=1091619) INFO 11-25 21:38:58 [cuda.py:549] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1091619) INFO 11-25 21:44:58 [model_runner.py:441] Model loading took 15.0 GiB memory and 384.999591 seconds
+(EngineCore pid=1091619) INFO 11-25 21:45:43 [gpu_worker.py:795] Available KV cache memory: 6.94 GiB
+(EngineCore pid=1091619) INFO 11-25 21:46:20 [model_runner.py:1216] Graph capturing finished in 28 secs, took 0.50 GiB
+(EngineCore pid=1091619) INFO 11-25 21:46:36 [extensible_kv_cache.py:693] Memory after warmup: 7.29 GiB free, 0.06 GiB committed to the KV cache, 0.19 GiB kept for transient activations (0.19 GiB allocated at peak, 0.19 GiB of torch reservation growth); 784 KV
+(EngineCore pid=1091619) INFO 11-25 21:46:36 [kv_cache_utils.py:1168] GPU KV cache size: 50,176 tokens, Maximum concurrency for 16,384 tokens per request: 3.06x
+(EngineCore pid=1091619) INFO 11-25 21:46:36 [core.py:451] init engine (profile, create kv cache, warmup model) took 98.13 s (compilation: 0.66 s)
+== server-b8192.log
+(APIServer pid=1088010) INFO 11-25 21:36:05 [scheduler.py:354] Chunked prefill is enabled with max_num_batched_tokens=8192.
+(EngineCore pid=1091578) INFO 11-25 21:37:45 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='/data/wangyue/models/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='/data/wangyue/models/Llama-3.1-8B-Instruct', skip_tokenizer_i
+(EngineCore pid=1091578) INFO 11-25 21:38:40 [cuda.py:549] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1091578) INFO 11-25 21:44:58 [model_runner.py:441] Model loading took 15.0 GiB memory and 390.205363 seconds
+(EngineCore pid=1091578) INFO 11-25 21:45:52 [gpu_worker.py:795] Available KV cache memory: 6.34 GiB
+(EngineCore pid=1091578) INFO 11-25 21:46:47 [model_runner.py:1216] Graph capturing finished in 39 secs, took 0.50 GiB
+(EngineCore pid=1091578) INFO 11-25 21:47:02 [extensible_kv_cache.py:693] Memory after warmup: 7.28 GiB free, 0.06 GiB committed to the KV cache, 1.18 GiB kept for transient activations (0.84 GiB allocated at peak, 1.18 GiB of torch reservation growth); 656 KV
+(EngineCore pid=1091578) INFO 11-25 21:47:02 [kv_cache_utils.py:1168] GPU KV cache size: 41,984 tokens, Maximum concurrency for 16,384 tokens per request: 2.56x
+(EngineCore pid=1091578) INFO 11-25 21:47:02 [core.py:451] init engine (profile, create kv cache, warmup model) took 124.38 s (compilation: 1.71 s)
+== server-preempt.log
+(EngineCore pid=1340226) INFO 11-26 01:02:19 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='/data/wangyue/models/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='/data/wangyue/models/Llama-3.1-8B-Instruct', skip_tokenizer_i
+(EngineCore pid=1340226) INFO 11-26 01:02:28 [cuda.py:549] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1340226) INFO 11-26 01:03:18 [model_runner.py:441] Model loading took 15.0 GiB memory and 54.269521 seconds
+(EngineCore pid=1340226) INFO 11-26 01:03:24 [gpu_worker.py:795] Available KV cache memory: 3.4 GiB
+(EngineCore pid=1340226) INFO 11-26 01:03:32 [model_runner.py:1216] Graph capturing finished in 6 secs, took 0.50 GiB
+(EngineCore pid=1340226) INFO 11-26 01:03:33 [extensible_kv_cache.py:693] Memory after warmup: 7.29 GiB free, 0.06 GiB committed to the KV cache, 0.54 GiB kept for transient activations (0.27 GiB allocated at peak, 0.54 GiB of torch reservation growth); 328 KV
+(EngineCore pid=1340226) INFO 11-26 01:03:34 [kv_cache_utils.py:1168] GPU KV cache size: 20,992 tokens, Maximum concurrency for 16,384 tokens per request: 1.28x
+(EngineCore pid=1340226) INFO 11-26 01:03:34 [core.py:451] init engine (profile, create kv cache, warmup model) took 15.21 s (compilation: 0.77 s)
+== server-wm.log
+(EngineCore pid=1344019) INFO 11-26 01:07:05 [core.py:153] Initializing a V1 LLM engine (v0.34.0) with config: model='/data/wangyue/models/Llama-3.1-8B-Instruct', speculative_config=None, tokenizer='/data/wangyue/models/Llama-3.1-8B-Instruct', skip_tokenizer_i
+(EngineCore pid=1344019) INFO 11-26 01:07:08 [cuda.py:549] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1344019) INFO 11-26 01:07:42 [model_runner.py:441] Model loading took 15.0 GiB memory and 34.617364 seconds
+(EngineCore pid=1344019) INFO 11-26 01:07:45 [gpu_worker.py:795] Available KV cache memory: 3.4 GiB
+(EngineCore pid=1344019) INFO 11-26 01:07:51 [model_runner.py:1216] Graph capturing finished in 5 secs, took 0.50 GiB
+(EngineCore pid=1344019) INFO 11-26 01:07:52 [extensible_kv_cache.py:693] Memory after warmup: 7.29 GiB free, 0.06 GiB committed to the KV cache, 0.54 GiB kept for transient activations (0.27 GiB allocated at peak, 0.54 GiB of torch reservation growth); 328 KV
+(EngineCore pid=1344019) INFO 11-26 01:07:52 [kv_cache_utils.py:1168] GPU KV cache size: 20,992 tokens, Maximum concurrency for 16,384 tokens per request: 1.28x
+(EngineCore pid=1344019) INFO 11-26 01:07:52 [core.py:451] init engine (profile, create kv cache, warmup model) took 10.61 s (compilation: 0.23 s)

@@ -1,0 +1,6 @@
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (139782 > 131072). Running this sequence through the model will result in indexing errors
+round 0 static: 100.73 s, 57248 tokens, 568.4 tok/s
+round 0 continuous: 48.76 s, 57248 tokens, 1174.2 tok/s
+round 1 static: 98.90 s, 57248 tokens, 578.9 tok/s
+round 1 continuous: 48.73 s, 57248 tokens, 1174.8 tok/s
+wrote results/batching.json

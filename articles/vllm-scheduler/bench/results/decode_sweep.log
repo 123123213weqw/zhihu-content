@@ -1,0 +1,20 @@
+[transformers] Token indices sequence length is longer than the specified maximum sequence length for this model (139782 > 131072). Running this sequence through the model will result in indexing errors
+round 0 b=1: 5.28 s
+round 0 b=2: 5.50 s
+round 0 b=4: 6.43 s
+round 0 b=8: 6.15 s
+round 0 b=16: 6.37 s
+round 0 b=32: 7.84 s
+round 0 b=64: 9.05 s
+round 0 b=128: 19.53 s
+round 0 b=256: 36.73 s
+round 1 b=256: 36.55 s
+round 1 b=128: 22.16 s
+round 1 b=64: 9.59 s
+round 1 b=32: 9.21 s
+round 1 b=16: 6.69 s
+round 1 b=8: 6.41 s
+round 1 b=4: 5.59 s
+round 1 b=2: 5.48 s
+round 1 b=1: 5.28 s
+wrote results/decode_sweep.json
