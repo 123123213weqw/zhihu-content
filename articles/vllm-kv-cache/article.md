@@ -1,8 +1,11 @@
 ---
 title: vLLM 的 KV 缓存是怎么设计的:从最朴素的写法,到分页、前缀缓存,再到整条调用链
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108834472112215377
+id: 2108834472112215377
 created: 2026-11-24
+published: 2026-11-25
 tags: [vllm, inference, llm-serving, kv-cache, paged-attention, prefix-caching, source-code]
 column: c_2108645240148185763
 ---
