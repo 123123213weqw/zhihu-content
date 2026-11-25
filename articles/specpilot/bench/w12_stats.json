@@ -1,0 +1,454 @@
+{
+ "torch": "2.14.0+cu130",
+ "models": {
+  "Qwen3.5-4B": {
+   "paper_escape_rate": 7.88e-05,
+   "paper_bits_per_weight": 12.02,
+   "weights": 4656988160,
+   "escapes": 382610,
+   "escape_rate": 8.215825053761786e-05,
+   "escape_reasons": {
+    "zero_or_denormal": 139,
+    "below_window": 374898,
+    "above_window": 7573
+   },
+   "bit_mismatch": 0,
+   "max_escapes_in_a_row": 26,
+   "rows": 1646848,
+   "bits_per_weight": 12.02789041061251,
+   "bytes_bf16": 9313976320,
+   "bytes_w12": 7001717904.0,
+   "by_category": {
+    "embedding / lm_head": {
+     "tensors": 1,
+     "rows": 248320,
+     "weights": 635699200,
+     "esc": 49250,
+     "esc_zero": 0,
+     "esc_below": 48818,
+     "esc_above": 432,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 5,
+     "bytes_bf16": 1271398400
+    },
+    "MLP": {
+     "tensors": 96,
+     "rows": 671744,
+     "weights": 2264924160,
+     "esc": 184328,
+     "esc_zero": 0,
+     "esc_below": 181946,
+     "esc_above": 2382,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 17,
+     "bytes_bf16": 4529848320
+    },
+    "MTP head": {
+     "tensors": 8,
+     "rows": 36352,
+     "weights": 120586240,
+     "esc": 13118,
+     "esc_zero": 0,
+     "esc_below": 10795,
+     "esc_above": 2323,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 6,
+     "bytes_bf16": 241172480
+    },
+    "linear attention": {
+     "tensors": 96,
+     "rows": 161280,
+     "weights": 507248640,
+     "esc": 38319,
+     "esc_zero": 0,
+     "esc_below": 37929,
+     "esc_above": 390,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 6,
+     "bytes_bf16": 1014497280
+    },
+    "attention": {
+     "tensors": 56,
+     "rows": 299008,
+     "weights": 796917760,
+     "esc": 59565,
+     "esc_zero": 0,
+     "esc_below": 59091,
+     "esc_above": 474,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 6,
+     "bytes_bf16": 1593835520
+    },
+    "visual tower": {
+     "tensors": 99,
+     "rows": 230144,
+     "weights": 331612160,
+     "esc": 38030,
+     "esc_zero": 139,
+     "esc_below": 36319,
+     "esc_above": 1572,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 26,
+     "bytes_bf16": 663224320
+    }
+   },
+   "skipped_bytes": {
+    "BF16 ndim=1": 1027584,
+    "F32 ndim=1": 15360,
+    "BF16 ndim=3": 1572864,
+    "BF16 ndim=5": 3145728
+   },
+   "seconds": 212.3,
+   "example": null,
+   "language_model_only": {
+    "weights": 4204789760,
+    "escapes": 331462,
+    "escape_rate": 7.882962500365297e-05,
+    "bits_per_weight": 12.02605507106258
+   }
+  },
+  "Llama-3.1-8B-Instruct": {
+   "paper_escape_rate": 7.66e-05,
+   "paper_bits_per_weight": 12.015,
+   "weights": 8029995008,
+   "escapes": 611572,
+   "escape_rate": 7.616094398448722e-05,
+   "escape_reasons": {
+    "zero_or_denormal": 1286,
+    "below_window": 599712,
+    "above_window": 10574
+   },
+   "bit_mismatch": 0,
+   "max_escapes_in_a_row": 40,
+   "rows": 1632768,
+   "bits_per_weight": 12.01788765246515,
+   "bytes_bf16": 16059990016,
+   "bytes_w12": 12062947232.0,
+   "by_category": {
+    "embedding / lm_head": {
+     "tensors": 2,
+     "rows": 256512,
+     "weights": 1050673152,
+     "esc": 89263,
+     "esc_zero": 1286,
+     "esc_below": 86587,
+     "esc_above": 1390,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 8,
+     "bytes_bf16": 2101346304
+    },
+    "MLP": {
+     "tensors": 96,
+     "rows": 1048576,
+     "weights": 5637144576,
+     "esc": 388916,
+     "esc_zero": 0,
+     "esc_below": 383789,
+     "esc_above": 5127,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 13,
+     "bytes_bf16": 11274289152
+    },
+    "attention": {
+     "tensors": 128,
+     "rows": 327680,
+     "weights": 1342177280,
+     "esc": 133393,
+     "esc_zero": 0,
+     "esc_below": 129336,
+     "esc_above": 4057,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 40,
+     "bytes_bf16": 2684354560
+    }
+   },
+   "skipped_bytes": {
+    "BF16 ndim=1": 532480
+   },
+   "seconds": 369.8,
+   "example": {
+    "tensor": "model.layers.16.mlp.down_proj.weight",
+    "shape": [
+     4096,
+     14336
+    ],
+    "rows": {
+     "median": {
+      "row": 4026,
+      "E": 122,
+      "escapes": 1,
+      "hist": {
+       "104": 1,
+       "107": 1,
+       "108": 2,
+       "109": 2,
+       "110": 5,
+       "111": 16,
+       "112": 32,
+       "113": 50,
+       "114": 138,
+       "115": 239,
+       "116": 457,
+       "117": 914,
+       "118": 1863,
+       "119": 3216,
+       "120": 4578,
+       "121": 2678,
+       "122": 144
+      },
+      "esc_cols": [
+       2783
+      ],
+      "esc_vals": [
+       1.4808028936386108e-07
+      ]
+     },
+     "worst": {
+      "row": 788,
+      "E": 124,
+      "escapes": 11,
+      "hist": {
+       "104": 1,
+       "105": 1,
+       "106": 3,
+       "107": 1,
+       "108": 5,
+       "109": 11,
+       "110": 20,
+       "111": 28,
+       "112": 55,
+       "113": 120,
+       "114": 252,
+       "115": 458,
+       "116": 952,
+       "117": 1853,
+       "118": 3290,
+       "119": 4096,
+       "120": 2467,
+       "121": 555,
+       "122": 127,
+       "123": 36,
+       "124": 5
+      },
+      "esc_cols": [
+       100,
+       493,
+       1536,
+       2262,
+       3736,
+       4197,
+       4910,
+       8139,
+       8361,
+       9840,
+       10589
+      ],
+      "esc_vals": [
+       2.0563602447509766e-06,
+       -3.4570693969726562e-06,
+       5.774199962615967e-07,
+       5.066394805908203e-07,
+       -3.2223761081695557e-07,
+       -1.825392246246338e-07,
+       3.6507844924926758e-06,
+       -3.1441450119018555e-06,
+       -3.6507844924926758e-06,
+       -1.087784767150879e-06,
+       5.066394805908203e-07
+      ]
+     }
+    },
+    "rows_with_escape": 2531,
+    "rows_total": 4096,
+    "esc_hist": {
+     "0": 1565,
+     "1": 1453,
+     "2": 713,
+     "3": 231,
+     "4": 81,
+     "5": 28,
+     "6": 7,
+     "7": 6,
+     "8": 5,
+     "9": 4,
+     "10": 1,
+     "11": 2
+    }
+   }
+  },
+  "Mistral-7B-Instruct-v0.3": {
+   "paper_escape_rate": 0.000121,
+   "paper_bits_per_weight": 12.018,
+   "weights": 7247757312,
+   "escapes": 877242,
+   "escape_rate": 0.00012103633748160469,
+   "escape_reasons": {
+    "zero_or_denormal": 5275,
+    "below_window": 809371,
+    "above_window": 62596
+   },
+   "bit_mismatch": 0,
+   "max_escapes_in_a_row": 235,
+   "rows": 1441792,
+   "bits_per_weight": 12.020477807080304,
+   "bytes_bf16": 14495514624,
+   "bytes_w12": 10890188240.0,
+   "by_category": {
+    "embedding / lm_head": {
+     "tensors": 2,
+     "rows": 65536,
+     "weights": 268435456,
+     "esc": 29156,
+     "esc_zero": 5275,
+     "esc_below": 22630,
+     "esc_above": 1251,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 11,
+     "bytes_bf16": 536870912
+    },
+    "MLP": {
+     "tensors": 96,
+     "rows": 1048576,
+     "weights": 5637144576,
+     "esc": 396546,
+     "esc_zero": 0,
+     "esc_below": 391557,
+     "esc_above": 4989,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 16,
+     "bytes_bf16": 11274289152
+    },
+    "attention": {
+     "tensors": 128,
+     "rows": 327680,
+     "weights": 1342177280,
+     "esc": 451540,
+     "esc_zero": 0,
+     "esc_below": 395184,
+     "esc_above": 56356,
+     "bit_mismatch": 0,
+     "max_esc_in_a_row": 235,
+     "bytes_bf16": 2684354560
+    }
+   },
+   "skipped_bytes": {
+    "BF16 ndim=1": 532480
+   },
+   "seconds": 315.3,
+   "example": {
+    "tensor": "model.layers.16.mlp.down_proj.weight",
+    "shape": [
+     4096,
+     14336
+    ],
+    "rows": {
+     "median": {
+      "row": 3851,
+      "E": 120,
+      "escapes": 1,
+      "hist": {
+       "104": 1,
+       "105": 1,
+       "106": 1,
+       "107": 7,
+       "108": 4,
+       "109": 16,
+       "110": 40,
+       "111": 60,
+       "112": 125,
+       "113": 246,
+       "114": 522,
+       "115": 984,
+       "116": 1840,
+       "117": 3392,
+       "118": 4555,
+       "119": 2434,
+       "120": 108
+      },
+      "esc_cols": [
+       12186
+      ],
+      "esc_vals": [
+       1.210719347000122e-07
+      ]
+     },
+     "worst": {
+      "row": 2811,
+      "E": 122,
+      "escapes": 13,
+      "hist": {
+       "100": 1,
+       "102": 1,
+       "103": 3,
+       "105": 1,
+       "106": 5,
+       "107": 4,
+       "108": 8,
+       "109": 25,
+       "110": 51,
+       "111": 121,
+       "112": 225,
+       "113": 427,
+       "114": 902,
+       "115": 1694,
+       "116": 3080,
+       "117": 4334,
+       "118": 2993,
+       "119": 399,
+       "120": 34,
+       "121": 19,
+       "122": 7,
+       "123": 2
+      },
+      "esc_cols": [
+       130,
+       2544,
+       3401,
+       4289,
+       5927,
+       6252,
+       6499,
+       8055,
+       10285,
+       13051,
+       13568,
+       13674,
+       14310
+      ],
+      "esc_vals": [
+       1.1129304766654968e-07,
+       -6.780028343200684e-07,
+       -9.499490261077881e-08,
+       3.6135315895080566e-07,
+       5.587935447692871e-07,
+       9.164214134216309e-07,
+       -5.62518835067749e-07,
+       5.774199962615967e-08,
+       6.966292858123779e-07,
+       -0.0908203125,
+       0.07568359375,
+       -1.1525116860866547e-08,
+       8.42846930027008e-08
+      ]
+     }
+    },
+    "rows_with_escape": 2595,
+    "rows_total": 4096,
+    "esc_hist": {
+     "0": 1501,
+     "1": 1445,
+     "2": 755,
+     "3": 262,
+     "4": 73,
+     "5": 33,
+     "6": 13,
+     "7": 9,
+     "8": 2,
+     "9": 1,
+     "10": 1,
+     "13": 1
+    }
+   }
+  }
+ }
+}

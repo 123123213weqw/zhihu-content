@@ -1,0 +1,983 @@
+{
+ "ar_bandwidth": {
+  "per_platform": {
+   "h100": {
+    "tpot_ms": 19.1,
+    "tok_s": 49.9,
+    "effective_gbps": 2675.4,
+    "fraction_of_peak": 0.799
+   },
+   "pro6000": {
+    "tpot_ms": 37.17,
+    "tok_s": 26.9,
+    "effective_gbps": 1374.6,
+    "fraction_of_peak": 0.91
+   },
+   "c500": {
+    "tpot_ms": 38.55,
+    "tok_s": 25.82,
+    "effective_gbps": 1325.6,
+    "fraction_of_peak": null
+   }
+  },
+  "h100_floor_ms_bf16": 15.25,
+  "h100_floor_ms_w12": 11.88,
+  "w12_ar_speedup_h100": 1.224,
+  "weight_bytes_saved_gb": 11.3,
+  "weight_bytes_saved_frac": 0.221,
+  "upper_bound_w12": 1.333,
+  "c500_free_after_bf16_gb": 12.9,
+  "c500_free_after_w12_gb": 24.2
+ },
+ "cost_model": {
+  "h100": {
+   "t_step_ms": 25.29,
+   "c_stock": 1.262,
+   "tau_stock": 4.65,
+   "tok_s_stock": 183.9,
+   "S_stock": 3.69,
+   "t_cycle_ms": 31.43,
+   "c_final": 1.569,
+   "tau_final": 13.08,
+   "tok_s_final": 416.1,
+   "S_final": 8.34,
+   "S_final_over_S_stock": 2.263,
+   "t_ar_ms": 20.04
+  },
+  "pro6000": {
+   "t_step_ms": 48.34,
+   "c_stock": 1.3,
+   "tau_stock": 5.23,
+   "tok_s_stock": 108.2,
+   "S_stock": 4.02,
+   "t_cycle_ms": 47.01,
+   "c_final": 1.264,
+   "tau_final": 12.8,
+   "tok_s_final": 272.3,
+   "S_final": 10.12,
+   "S_final_over_S_stock": 2.517,
+   "t_ar_ms": 37.17
+  },
+  "c500": {
+   "t_step_ms": 62.99,
+   "c_stock": 1.626,
+   "tau_stock": 4.27,
+   "tok_s_stock": 67.79,
+   "S_stock": 2.63,
+   "t_cycle_ms": 89.13,
+   "c_final": 2.301,
+   "tau_final": 9.36,
+   "tok_s_final": 105.01,
+   "S_final": 4.07,
+   "S_final_over_S_stock": 1.549,
+   "t_ar_ms": 38.73
+  },
+  "note_paper_speedup_is_geomean": {
+   "h100_stock": 3.95,
+   "h100_final": 8.86,
+   "ratio_of_rates": 8.34
+  }
+ },
+ "rows_are_nearly_free": {
+  "gemm_ms_1_row": 17.88,
+  "gemm_ms_64_rows": 18.58,
+  "increase": 0.0391,
+  "extra_per_row_us": 11.11,
+  "rtx4090d": {
+   "q_proj": {
+    "shape": [
+     4096,
+     4096
+    ],
+    "us": {
+     "1": 37.36,
+     "2": 37.11,
+     "4": 37.11,
+     "8": 37.09,
+     "16": 37.11,
+     "24": 40.89,
+     "32": 40.96,
+     "48": 42.38,
+     "64": 42.66,
+     "96": 47.44,
+     "128": 45.7,
+     "192": 57.67,
+     "256": 78.39,
+     "384": 102.31,
+     "512": 137.31,
+     "1024": 244.39
+    },
+    "ratio_16_over_1": 0.993,
+    "ratio_64_over_1": 1.142,
+    "ratio_1024_over_1": 6.54,
+    "gbps_at_1": 898.1,
+    "copy_gbps": 943.8,
+    "byte_floor_us": 35.6,
+    "floor_fraction_at_1": 0.952
+   },
+   "gate_proj": {
+    "shape": [
+     14336,
+     4096
+    ],
+    "us": {
+     "1": 121.7,
+     "2": 123.02,
+     "4": 123.33,
+     "8": 123.89,
+     "16": 124.82,
+     "24": 136.02,
+     "32": 135.73,
+     "48": 136.07,
+     "64": 137.07,
+     "96": 140.76,
+     "128": 148.18,
+     "192": 191.21,
+     "256": 235.29,
+     "384": 338.47,
+     "512": 446.94,
+     "1024": 855.36
+    },
+    "ratio_16_over_1": 1.026,
+    "ratio_64_over_1": 1.126,
+    "ratio_1024_over_1": 7.03,
+    "gbps_at_1": 965.0,
+    "copy_gbps": 943.8,
+    "byte_floor_us": 124.4,
+    "floor_fraction_at_1": 1.022
+   },
+   "down_proj": {
+    "shape": [
+     4096,
+     14336
+    ],
+    "us": {
+     "1": 122.84,
+     "2": 123.61,
+     "4": 123.73,
+     "8": 124.14,
+     "16": 124.76,
+     "24": 131.44,
+     "32": 131.82,
+     "48": 141.21,
+     "64": 142.95,
+     "96": 139.87,
+     "128": 142.77,
+     "192": 197.15,
+     "256": 247.56,
+     "384": 344.03,
+     "512": 448.63,
+     "1024": 861.01
+    },
+    "ratio_16_over_1": 1.016,
+    "ratio_64_over_1": 1.164,
+    "ratio_1024_over_1": 7.01,
+    "gbps_at_1": 956.0,
+    "copy_gbps": 943.8,
+    "byte_floor_us": 124.4,
+    "floor_fraction_at_1": 1.013
+   },
+   "lm_head": {
+    "shape": [
+     128256,
+     4096
+    ],
+    "us": {
+     "1": 1069.91,
+     "2": 1081.04,
+     "4": 1083.41,
+     "8": 1086.52,
+     "16": 1096.54,
+     "24": 1158.22,
+     "32": 1165.97,
+     "48": 1169.39,
+     "64": 1210.54,
+     "96": 1190.6,
+     "128": 1276.7,
+     "192": 1598.05,
+     "256": 2025.49,
+     "384": 2933.77,
+     "512": 3888.38,
+     "1024": 7595.58
+    },
+    "ratio_16_over_1": 1.025,
+    "ratio_64_over_1": 1.131,
+    "ratio_1024_over_1": 7.1,
+    "gbps_at_1": 982.0,
+    "copy_gbps": 943.8,
+    "byte_floor_us": 1113.2,
+    "floor_fraction_at_1": 1.04
+   }
+  }
+ },
+ "tree_replay": {
+  "chain_8_positions": 4.25,
+  "best_first_8pos_32nodes": {
+   "tau": 5.38,
+   "gain": 0.266
+  },
+  "best_first_16pos_32nodes": {
+   "tau": 5.85,
+   "gain": 0.376
+  },
+  "best_first_16pos_63nodes": {
+   "tau": 6.25,
+   "gain": 0.471
+  },
+  "oracle_8pos": {
+   "tau": 6.42,
+   "gain": 0.511
+  },
+  "oracle_16pos": {
+   "tau": 8.2,
+   "gain": 0.929
+  },
+  "live_stock_chain": 4.65
+ },
+ "two_level": {
+  "cycle_ms": 30.1,
+  "parts_ms": {
+   "draft_x2": 2.1,
+   "q_pass": 11.5,
+   "exact_pass": 14.9,
+   "glue": 1.6
+  },
+  "q_pass_over_exact": 0.772,
+  "tokens_per_exact_pass": {
+   "one_level": 6.16,
+   "two_level": 11.67,
+   "ratio": 1.894
+  },
+  "one_level_step_ms_derived": 16.48,
+  "one_level_tok_s_derived": 373.9,
+  "two_level_tok_s": 387.7,
+  "cycle_over_one_level_step": 1.827,
+  "cycle_over_ar_step": 1.502,
+  "bytes_per_cycle_gb": 65.35,
+  "bytes_over_ar": 1.279,
+  "h100_floor_ms": 19.51,
+  "fraction_of_peak": 0.648,
+  "breakeven_tokens_batching": [
+   1.8,
+   1.88
+  ]
+ },
+ "promotions_h100": {
+  "count": 15,
+  "product": 2.077,
+  "sealed": 2.13,
+  "by_group": {
+   "草稿模型": {
+    "n": 2,
+    "product": 1.186,
+    "items": [
+     1.16,
+     1.022
+    ]
+   },
+   "树": {
+    "n": 2,
+    "product": 1.235,
+    "items": [
+     1.16,
+     1.065
+    ]
+   },
+   "其它内核": {
+    "n": 7,
+    "product": 1.144,
+    "items": [
+     1.031,
+     1.017,
+     1.023,
+     1.03,
+     1.01,
+     1.015,
+     1.01
+    ]
+   },
+   "W12": {
+    "n": 3,
+    "product": 1.195,
+    "items": [
+     1.076,
+     1.063,
+     1.045
+    ]
+   },
+   "两级验证": {
+    "n": 1,
+    "product": 1.037,
+    "items": [
+     1.037
+    ]
+   }
+  },
+  "largest_single": "FP8 草稿,块长 12",
+  "cumulative": [
+   [
+    "FP8 草稿,块长 12",
+    "草稿模型",
+    1.16
+   ],
+   [
+    "树状验证 (16 节点)",
+    "树",
+    1.346
+   ],
+   [
+    "宽树 (32 节点)",
+    "树",
+    1.433
+   ],
+   [
+    "瘦 GEMM 与融合",
+    "其它内核",
+    1.477
+   ],
+   [
+    "certified LM head",
+    "其它内核",
+    1.503
+   ],
+   [
+    "内核预置",
+    "其它内核",
+    1.537
+   ],
+   [
+    "GDN 树内核 (WY)",
+    "其它内核",
+    1.583
+   ],
+   [
+    "W12",
+    "W12",
+    1.704
+   ],
+   [
+    "W12 流水线调优",
+    "W12",
+    1.811
+   ],
+   [
+    "尾步跳过",
+    "其它内核",
+    1.829
+   ],
+   [
+    "INT4 草稿,快速接受",
+    "草稿模型",
+    1.869
+   ],
+   [
+    "W12 布局与边界校准",
+    "W12",
+    1.953
+   ],
+   [
+    "两级验证",
+    "两级验证",
+    2.026
+   ],
+   [
+    "prefill 图与 Q-pass 门控",
+    "其它内核",
+    2.056
+   ],
+   [
+    "草稿到精确验证的交接融合",
+    "其它内核",
+    2.077
+   ]
+  ],
+  "tokens_per_s": {
+   "stock": 183.9,
+   "after_round_1": 270,
+   "final": 416.1
+  }
+ },
+ "ceiling_factors": {
+  "before_round_1": {
+   "tau": 1.83,
+   "overhead": 1.01,
+   "kernel": 1.39,
+   "product": 2.569,
+   "paper": 2.57
+  },
+  "before_round_2": {
+   "tau": 1.34,
+   "step_cost": 1.45,
+   "product": 1.943,
+   "paper": 1.95
+  },
+  "byte_floor": "取两个下限里大的那个:FLOP 时间按峰值稠密算力的 60%,字节时间按峰值带宽的 90%"
+ },
+ "batching": {
+  "stock_fp8_speedup": {
+   "1_request": 3.4,
+   "24_requests": 1.89,
+   "drop": 0.444
+  },
+  "stock_qwen35_4b_speedup": {
+   "1_request": 3.73,
+   "32_requests": 1.49,
+   "drop": 0.601
+  },
+  "shared_node_budget": {
+   "nodes": 192,
+   "requests": 24,
+   "nodes_per_request": 8
+  },
+  "per_request_rates_h100_fp8_24_requests": {
+   "ar": 61.4,
+   "stock": 115,
+   "final": 215,
+   "S_stock": 1.87,
+   "S_final": 3.5
+  },
+  "eagle3_gemma4_12b": {
+   "stock": 0.68,
+   "final": 2.09
+  }
+ },
+ "search_cost": {
+  "rounds": 13,
+  "hours": 164,
+  "gpu_hours": 530,
+  "gpus_average": 3.23,
+  "changes": 486,
+  "promoted": 54,
+  "promoted_frac": 0.111,
+  "memory_entries": 140
+ },
+ "w12_checkpoints": {
+  "Qwen3.5-4B": {
+   "weights": 4656988160,
+   "escape_rate": 8.215825053761786e-05,
+   "paper_escape_rate": 7.88e-05,
+   "ratio_to_paper": 1.043,
+   "bits_per_weight": 12.028,
+   "paper_bits_per_weight": 12.02,
+   "bit_mismatch": 0,
+   "escape_reasons": {
+    "zero_or_denormal": 139,
+    "below_window": 374898,
+    "above_window": 7573
+   },
+   "bytes_saved_frac": 0.2483,
+   "by_category": {
+    "embedding / lm_head": 7.747e-05,
+    "MLP": 8.138e-05,
+    "MTP head": 0.00010879,
+    "linear attention": 7.554e-05,
+    "attention": 7.474e-05,
+    "visual tower": 0.00011468
+   },
+   "language_model_only": {
+    "weights": 4204789760,
+    "escape_rate": 7.882962500365297e-05,
+    "ratio_to_paper": 1.0,
+    "bits_per_weight": 12.026
+   }
+  },
+  "Llama-3.1-8B-Instruct": {
+   "weights": 8029995008,
+   "escape_rate": 7.616094398448722e-05,
+   "paper_escape_rate": 7.66e-05,
+   "ratio_to_paper": 0.994,
+   "bits_per_weight": 12.018,
+   "paper_bits_per_weight": 12.015,
+   "bit_mismatch": 0,
+   "escape_reasons": {
+    "zero_or_denormal": 1286,
+    "below_window": 599712,
+    "above_window": 10574
+   },
+   "bytes_saved_frac": 0.2489,
+   "by_category": {
+    "embedding / lm_head": 8.496e-05,
+    "MLP": 6.899e-05,
+    "attention": 9.939e-05
+   }
+  },
+  "Mistral-7B-Instruct-v0.3": {
+   "weights": 7247757312,
+   "escape_rate": 0.00012103633748160469,
+   "paper_escape_rate": 0.000121,
+   "ratio_to_paper": 1.0,
+   "bits_per_weight": 12.02,
+   "paper_bits_per_weight": 12.018,
+   "bit_mismatch": 0,
+   "escape_reasons": {
+    "zero_or_denormal": 5275,
+    "below_window": 809371,
+    "above_window": 62596
+   },
+   "bytes_saved_frac": 0.2487,
+   "by_category": {
+    "embedding / lm_head": 0.00010861,
+    "MLP": 7.035e-05,
+    "attention": 0.00033642
+   }
+  }
+ },
+ "rtx4090d": {
+  "copy_gbps": 943.8,
+  "gpu": "NVIDIA GeForce RTX 4090 D",
+  "torch": "2.14.0+cu130",
+  "triton": "3.8.0",
+  "verify": {
+   "q_proj": {
+    "shape": [
+     4096,
+     4096
+    ],
+    "escapes": 21885,
+    "escape_rate": 0.0013044,
+    "speedup_vs_bf16_at_1": {
+     "bf16_triton": 1.016,
+     "dequant": 0.73,
+     "w12": 1.031,
+     "q8": 1.321
+    },
+    "speedup_vs_bf16_at_16": {
+     "bf16_triton": 1.013,
+     "dequant": 0.682,
+     "w12": 0.989,
+     "q8": 1.304
+    },
+    "speedup_vs_bf16_at_64": {
+     "bf16_triton": 0.844,
+     "dequant": 0.74,
+     "w12": 1.078,
+     "q8": 1.008
+    },
+    "us_at_1": {
+     "bf16": 37.18,
+     "bf16_triton": 36.61,
+     "dequant": 50.91,
+     "w12": 36.07,
+     "q8": 28.15
+    },
+    "us_at_16": {
+     "bf16": 37.17,
+     "bf16_triton": 36.71,
+     "dequant": 54.53,
+     "w12": 37.57,
+     "q8": 28.5
+    },
+    "us_at_64": {
+     "bf16": 42.63,
+     "bf16_triton": 50.53,
+     "dequant": 57.61,
+     "w12": 39.56,
+     "q8": 42.3
+    },
+    "gbps_at_16": {
+     "bf16": 902.7,
+     "bf16_triton": 914.2,
+     "dequant": 1692.2,
+     "w12": 669.8,
+     "q8": 588.7
+    },
+    "effective_read_gbps_at_16": {
+     "bf16": 902.7,
+     "bf16_triton": 914.0,
+     "w12": 669.8,
+     "q8": 588.7
+    },
+    "error": {
+     "bf16": 0.00356536252636989,
+     "bf16_triton": 0.0027138547353628105,
+     "dequant": 0.00356536252636989,
+     "w12": 0.0025021660489126605,
+     "q8": 0.2630781899745712
+    },
+    "bitwise_equal_to_cublas": {
+     "bf16": 1.0,
+     "bf16_triton": 0.6063728332519531,
+     "dequant": 1.0,
+     "q8": 0.04894256591796875
+    },
+    "gpu_during": {
+     "sm_clock_mhz": 2670,
+     "power_w": 358.37,
+     "temp_c": 62
+    },
+    "gpu_after_warmup": {
+     "sm_clock_mhz": 2670,
+     "power_w": 312.3,
+     "temp_c": 55
+    },
+    "best_config": {
+     "bf16_triton": [
+      16,
+      64,
+      4,
+      3,
+      1
+     ],
+     "w12": [
+      32,
+      128,
+      4,
+      2,
+      4
+     ],
+     "q8": [
+      16,
+      64,
+      4,
+      3,
+      2
+     ]
+    }
+   },
+   "gate_proj": {
+    "shape": [
+     14336,
+     4096
+    ],
+    "escapes": 4111,
+    "escape_rate": 7e-05,
+    "speedup_vs_bf16_at_1": {
+     "bf16_triton": 0.995,
+     "dequant": 0.356,
+     "w12": 1.09,
+     "q8": 1.566
+    },
+    "speedup_vs_bf16_at_16": {
+     "bf16_triton": 1.006,
+     "dequant": 0.339,
+     "w12": 1.097,
+     "q8": 1.615
+    },
+    "speedup_vs_bf16_at_64": {
+     "bf16_triton": 0.918,
+     "dequant": 0.354,
+     "w12": 1.169,
+     "q8": 1.475
+    },
+    "us_at_1": {
+     "bf16": 121.44,
+     "bf16_triton": 122.05,
+     "dequant": 341.25,
+     "w12": 111.44,
+     "q8": 77.54
+    },
+    "us_at_16": {
+     "bf16": 124.77,
+     "bf16_triton": 124.07,
+     "dequant": 368.1,
+     "w12": 113.78,
+     "q8": 77.28
+    },
+    "us_at_64": {
+     "bf16": 137.38,
+     "bf16_triton": 149.68,
+     "dequant": 388.4,
+     "w12": 117.56,
+     "q8": 93.12
+    },
+    "gbps_at_16": {
+     "bf16": 941.2,
+     "bf16_triton": 946.6,
+     "dequant": 877.4,
+     "w12": 774.1,
+     "q8": 759.8
+    },
+    "effective_read_gbps_at_16": {
+     "bf16": 941.3,
+     "bf16_triton": 946.6,
+     "w12": 774.1,
+     "q8": 759.8
+    },
+    "error": {
+     "bf16": 0.0025042714163241754,
+     "bf16_triton": 0.0025042714163241754,
+     "dequant": 0.0025042714163241754,
+     "w12": 0.0025042714163241754,
+     "q8": 0.1679080784389694
+    },
+    "bitwise_equal_to_cublas": {
+     "bf16": 1.0,
+     "bf16_triton": 1.0,
+     "dequant": 1.0,
+     "q8": 0.0641762912273407
+    },
+    "gpu_during": {
+     "sm_clock_mhz": 2670,
+     "power_w": 347.47,
+     "temp_c": 59
+    },
+    "gpu_after_warmup": {
+     "sm_clock_mhz": 2655,
+     "power_w": 377.57,
+     "temp_c": 63
+    },
+    "best_config": {
+     "bf16_triton": [
+      16,
+      128,
+      4,
+      3,
+      1
+     ],
+     "w12": [
+      64,
+      128,
+      8,
+      2,
+      1
+     ],
+     "q8": [
+      32,
+      128,
+      8,
+      3,
+      1
+     ]
+    }
+   },
+   "down_proj": {
+    "shape": [
+     4096,
+     14336
+    ],
+    "escapes": 4414,
+    "escape_rate": 7.52e-05,
+    "speedup_vs_bf16_at_1": {
+     "bf16_triton": 0.997,
+     "dequant": 0.361,
+     "w12": 0.925,
+     "q8": 1.435
+    },
+    "speedup_vs_bf16_at_16": {
+     "bf16_triton": 0.987,
+     "dequant": 0.336,
+     "w12": 0.904,
+     "q8": 1.367
+    },
+    "speedup_vs_bf16_at_64": {
+     "bf16_triton": 0.841,
+     "dequant": 0.386,
+     "w12": 0.983,
+     "q8": 1.038
+    },
+    "us_at_1": {
+     "bf16": 122.74,
+     "bf16_triton": 123.14,
+     "dequant": 340.08,
+     "w12": 132.72,
+     "q8": 85.51
+    },
+    "us_at_16": {
+     "bf16": 125.0,
+     "bf16_triton": 126.66,
+     "dequant": 371.53,
+     "w12": 138.2,
+     "q8": 91.46
+    },
+    "us_at_64": {
+     "bf16": 142.86,
+     "bf16_triton": 169.95,
+     "dequant": 370.0,
+     "w12": 145.37,
+     "q8": 137.61
+    },
+    "gbps_at_16": {
+     "bf16": 939.5,
+     "bf16_triton": 927.2,
+     "dequant": 869.3,
+     "w12": 637.4,
+     "q8": 642.0
+    },
+    "effective_read_gbps_at_16": {
+     "bf16": 939.5,
+     "bf16_triton": 927.2,
+     "w12": 637.3,
+     "q8": 642.0
+    },
+    "error": {
+     "bf16": 0.002620602718936153,
+     "bf16_triton": 0.002233063725586061,
+     "dequant": 0.002620602718936153,
+     "w12": 0.0022408926768313184,
+     "q8": 0.10325775264652472
+    },
+    "bitwise_equal_to_cublas": {
+     "bf16": 1.0,
+     "bf16_triton": 0.5852775573730469,
+     "dequant": 1.0,
+     "q8": 0.06431961059570312
+    },
+    "gpu_during": {
+     "sm_clock_mhz": 2655,
+     "power_w": 358.94,
+     "temp_c": 63
+    },
+    "gpu_after_warmup": {
+     "sm_clock_mhz": 2655,
+     "power_w": 363.52,
+     "temp_c": 62
+    },
+    "best_config": {
+     "bf16_triton": [
+      16,
+      64,
+      4,
+      3,
+      1
+     ],
+     "w12": [
+      32,
+      128,
+      4,
+      2,
+      4
+     ],
+     "q8": [
+      16,
+      128,
+      4,
+      2,
+      4
+     ]
+    }
+   },
+   "lm_head": {
+    "shape": [
+     128256,
+     4096
+    ],
+    "escapes": 52525,
+    "escape_rate": 0.0001,
+    "speedup_vs_bf16_at_1": {
+     "bf16_triton": 0.994,
+     "dequant": 0.296,
+     "w12": 1.112,
+     "q8": 1.688
+    },
+    "speedup_vs_bf16_at_16": {
+     "bf16_triton": 0.999,
+     "dequant": 0.3,
+     "w12": 1.129,
+     "q8": 1.716
+    },
+    "speedup_vs_bf16_at_64": {
+     "bf16_triton": 0.998,
+     "dequant": 0.322,
+     "w12": 1.15,
+     "q8": 1.721
+    },
+    "us_at_1": {
+     "bf16": 1069.95,
+     "bf16_triton": 1076.22,
+     "dequant": 3610.59,
+     "w12": 962.16,
+     "q8": 633.84
+    },
+    "us_at_16": {
+     "bf16": 1096.58,
+     "bf16_triton": 1097.62,
+     "dequant": 3651.17,
+     "w12": 971.27,
+     "q8": 639.21
+    },
+    "us_at_64": {
+     "bf16": 1213.86,
+     "bf16_triton": 1216.15,
+     "dequant": 3764.19,
+     "w12": 1055.67,
+     "q8": 705.31
+    },
+    "gbps_at_16": {
+     "bf16": 958.1,
+     "bf16_triton": 957.2,
+     "dequant": 791.4,
+     "w12": 811.3,
+     "q8": 821.9
+    },
+    "effective_read_gbps_at_16": {
+     "bf16": 958.1,
+     "bf16_triton": 957.2,
+     "w12": 811.3,
+     "q8": 821.9
+    },
+    "error": {
+     "bf16": 0.0027066911008548616,
+     "bf16_triton": 0.0027066911008548616,
+     "dequant": 0.0027066911008548616,
+     "w12": 0.002714744289248346,
+     "q8": 0.22333902070257425
+    },
+    "bitwise_equal_to_cublas": {
+     "bf16": 1.0,
+     "bf16_triton": 0.9980015754699707,
+     "dequant": 1.0,
+     "q8": 0.06381925940513611
+    },
+    "gpu_during": {
+     "sm_clock_mhz": 2250,
+     "power_w": 433.55,
+     "temp_c": 68
+    },
+    "gpu_after_warmup": {
+     "sm_clock_mhz": 2550,
+     "power_w": 424.76,
+     "temp_c": 66
+    },
+    "best_config": {
+     "bf16_triton": [
+      16,
+      128,
+      4,
+      3,
+      1
+     ],
+     "w12": [
+      32,
+      128,
+      4,
+      3,
+      1
+     ],
+     "q8": [
+      64,
+      128,
+      8,
+      2,
+      1
+     ]
+    }
+   }
+  }
+ },
+ "platforms": {
+  "h100": {
+   "ar": 49.9,
+   "stock": 183.9,
+   "final": 416.1,
+   "source": "论文表 A1"
+  },
+  "pro6000": {
+   "ar": 26.9,
+   "stock": 108.2,
+   "final": 272.3,
+   "source": "论文表 A1"
+  },
+  "c500": {
+   "ar": 25.82,
+   "stock": 67.79,
+   "final": 105.01,
+   "source": "JunkaiShi 复现仓库 README"
+  },
+  "pro6000_porting": {
+   "round_1_sealed_gain_over_stock": 1.92,
+   "after_tlv": 2.44,
+   "ceiling": 2.12,
+   "gpu_hours_round_1": 24.3
+  }
+ }
+}
