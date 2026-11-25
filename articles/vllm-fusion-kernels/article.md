@@ -1,8 +1,11 @@
 ---
 title: vLLM 的融合算子是怎么写的:从最朴素的写法,到 Triton,再到编译器自动融合
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2108873361338144213
+id: 2108873361338144213
 created: 2026-11-25
+published: 2026-11-25
 tags: [vllm, inference, llm-serving, fused-kernel, triton, inductor, torch-compile, cuda, source-code]
 column: c_2108645240148185763
 ---
