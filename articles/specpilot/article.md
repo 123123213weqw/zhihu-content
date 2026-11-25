@@ -1,8 +1,11 @@
 ---
 title: 投机解码的加速比是怎么抠出来的:SpecPilot 论文解析
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2109183295162423161
+id: 2109183295162423161
 created: 2026-11-26
+published: 2026-11-26
 tags: [speculative-decoding, inference, llm-serving, w12, sglang, paper-reading, agentic-optimization]
 column: c_2108645240148185763
 ---
