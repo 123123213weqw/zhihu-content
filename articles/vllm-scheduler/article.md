@@ -1,7 +1,10 @@
 ---
 title: vLLM 的调度器是怎么排的:从整批一起跑,到按 token 记账
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2109183924111005387
+id: 2109183924111005387
+published: 2026-11-26
 column: c_2108645240148185763
 ---
 
