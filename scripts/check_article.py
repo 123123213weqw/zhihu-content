@@ -75,7 +75,9 @@ def main() -> int:
     long = [(cjk(p), p[:30]) for p in paras if cjk(p) > 105]
     multi_bold = sum(p.count("**") // 2 > 1 for p in paras)
     fullwidth = {c: body.count(c) for c in "，：；（）！“”" if body.count(c)}
-    flagged = {w: body.count(w) for w in FILLER if body.count(w)}
+    # the two ASCII placeholder markers are shift / template operators inside code, so only look at prose
+    prose = re.sub(r"```.*?```", "", body, flags=re.S)
+    flagged = {w: prose.count(w) if w in ("<<", "{{") else body.count(w) for w in FILLER if (prose.count(w) if w in ("<<", "{{") else body.count(w))}
     sections = re.findall(r"^## (.*)$", body, re.M)
 
     print(f"汉字 {cjk(body)} | 小节 {len(sections)} | 段落 {len(paras)} | 代码块 {code_blocks}(最长一行 {longest} 字符) | "
