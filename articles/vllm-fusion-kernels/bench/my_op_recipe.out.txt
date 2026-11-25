@@ -1,0 +1,12 @@
+torch 算子的名字: vllm_ir.my_rms_norm.default
+登记了的实现: ['my_triton', 'native']
+1. 优先级 ['my_triton'] -> 选中的是 my_triton
+   直接调用:最大误差 0.03125,1 个 kernel:['_my_rms_norm_kernel']
+2. 普通 torch.compile,my_triton 在前:最大误差 0.03125,1 个 kernel:['_my_rms_norm_kernel']
+3. 普通 torch.compile,native 在前:最大误差 0.0,8 个 kernel:['void at::native::unrolled_elementwise_kernel<at::native:', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::reduce_kernel<512, 1, at::native::Reduc', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::elementwise_kernel<128, 2, at::native::', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::elementwise_kernel<128, 4, at::native::']
+4. 前后各加一个算子,优先级 native:最大误差 0.03125,9 个 kernel:['void at::native::unrolled_elementwise_kernel<at::native:', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::reduce_kernel<512, 1, at::native::Reduc', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::elementwise_kernel<128, 2, at::native::', 'void at::native::vectorized_elementwise_kernel<4, at::na', 'void at::native::elementwise_kernel<128, 4, at::native::', 'triton_poi_fused_add_mul_0']
+4. 前后各加一个算子,优先级 my_triton:最大误差 0.0625,2 个 kernel:['_my_rms_norm_kernel', 'triton_poi_fused_add_mul_0']
+5. vLLM 的编译流程,优先级 native:最大误差 0.03125,1 个 kernel:['triton_red_fused_my_rms_norm_0']
+6. vLLM 的编译流程,前后各加一个算子,优先级 native:最大误差 0.0625,1 个 kernel:['triton_red_fused_add_mul_my_rms_norm_0']
+5. vLLM 的编译流程,优先级 my_triton:最大误差 0.03125,1 个 kernel:['_my_rms_norm_kernel']
+6. vLLM 的编译流程,前后各加一个算子,优先级 my_triton:最大误差 0.0625,2 个 kernel:['_my_rms_norm_kernel', 'triton_poi_fused_add_mul_0']
