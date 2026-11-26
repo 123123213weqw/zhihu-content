@@ -1,0 +1,331 @@
+{
+ "identity": {
+  "company_founded": "2020-09-14",
+  "n100_mass_production": "2023-04",
+  "c500_tapeout_return": "2023-06",
+  "c500_mass_production": "2024-02",
+  "architecture": "XCORE 1.0",
+  "isa_instructions_xcore1": ">600",
+  "hbm_gb": 64,
+  "tdp_w_pcie_card": 350,
+  "tdp_w_oam_module": 450,
+  "hbm_phy_count": 4,
+  "hbm_stacks": 4,
+  "package": "2.5D CoWoS-S",
+  "vgpu_instances": 16,
+  "cache_levels": 2,
+  "metaxlink_ports": 7,
+  "precisions_c500": [
+   "FP64",
+   "FP32",
+   "TF32",
+   "FP16",
+   "BF16",
+   "INT8"
+  ]
+ },
+ "hbm": {
+  "gb_per_stack": 16.0,
+  "stacks_official": 4,
+  "pin_rate_gbps_official": 3.6,
+  "bits_per_stack_assumed": 1024,
+  "tbps_derived": 1.843,
+  "tbps_if_3p2_gbps": 1.638,
+  "third_party_claims_tbps": [
+   1.8,
+   3.35
+  ],
+  "measured_gbps": {
+   "gemm_read_m1_gate_up": 1523.9,
+   "gemm_read_m1_lm_head": 1654,
+   "elementwise": [
+    1470,
+    1571
+   ],
+   "copy_d2d": [
+    1427.4,
+    1443
+   ]
+  },
+  "efficiency": {
+   "read_1654_over_1p64": 1.01,
+   "read_1654_over_1p84": 0.897,
+   "read_1654_over_3p35": 0.494,
+   "copy_1427_over_1p84": 0.774
+  }
+ },
+ "ar_decode": {
+  "tok_s": 25.71,
+  "tpot_ms": 38.69,
+  "effective_gbps": 1320.8,
+  "floor_ms_at_1p84": 27.7,
+  "max_tok_s_at_1p84": 36.1,
+  "free_gb_after_bf16": 12.9,
+  "free_gb_after_w12": 24.2
+ },
+ "per_cu": {
+  "cu": 104,
+  "mma_mac_per_instruction": 4096,
+  "accumulators_per_wavefront": 256,
+  "mma_cycles_if_1024_mac": 4.0,
+  "set_oam": {
+   "fp32": 18,
+   "bf16": 280,
+   "int8": 560,
+   "ghz_from_fp32": 1.352,
+   "ghz_from_bf16": 1.315
+  },
+  "set_pcie": {
+   "fp32": 15,
+   "bf16": 240,
+   "int8": 480,
+   "ghz_from_fp32": 1.127,
+   "ghz_from_bf16": 1.127
+  },
+  "measured_simt_fp32": 15,
+  "measured_simt_over_set_pcie": 1.0,
+  "mac_per_cycle_if_3p2ghz_240": 1025.6410256410256
+ },
+ "a100": {
+  "sm": 108,
+  "boost_ghz": 1.41,
+  "fp32_tflops": 19.5,
+  "bf16_tflops": 311.9
+ },
+ "nine_tenths": {
+  "cu_ratio": 0.963,
+  "clock_ratio": 0.933,
+  "product": 0.898,
+  "peak_ratio": 0.897,
+  "per_thread_macs_nvidia_m16n8k16": 64,
+  "per_thread_macs_c500": 64
+ },
+ "gemm": {
+  "bf16_measured_tflops": 229.6,
+  "bf16_spec": 280,
+  "bf16_eff": 0.82,
+  "bf16_eff_of_240": 0.957,
+  "fp32_measured_tflops": 29.9,
+  "fp32_matrix_spec": 36,
+  "fp32_eff": 0.831,
+  "fa_prefill_tflops": 139.5,
+  "shape": "30720×8192×8192, torch (mcBLAS)",
+  "int8_measured_tops": 112.3,
+  "int8_note": "torch 兜底路径, 不是厂商内核"
+ },
+ "ridge": {
+  "flop_per_byte_spec": 151.9,
+  "flop_per_byte_measured": 150.7,
+  "rows_at_ridge_spec": 76,
+  "util_at_m1": 0.0132
+ },
+ "plateau": {
+  "m": [
+   1,
+   4,
+   8,
+   12,
+   16,
+   24,
+   32,
+   48,
+   64,
+   96,
+   128,
+   192,
+   256
+  ],
+  "gate_up": {
+   "shape": "17408×5120",
+   "mb": 178.3,
+   "us": [
+    117.0,
+    133.6,
+    133.8,
+    135.8,
+    135.6,
+    137.7,
+    140.8,
+    168.6,
+    172.5,
+    192.9,
+    199.8,
+    271.2,
+    277.8
+   ],
+   "gbps": [
+    1523.9,
+    1335.7,
+    1335.1,
+    1316.9,
+    1319.6,
+    1302.0,
+    1275.8,
+    1069.8,
+    1050.0,
+    946.7,
+    920.9,
+    689.2,
+    683.3
+   ]
+  },
+  "o_proj": {
+   "shape": "5120×6144",
+   "mb": 62.9,
+   "us": [
+    52.8,
+    59.0,
+    65.4,
+    49.7,
+    50.0,
+    50.0,
+    49.0,
+    53.8,
+    58.3,
+    72.4,
+    79.9,
+    109.6,
+    113.5
+   ],
+   "gbps": [
+    1192.6,
+    1068.3,
+    964.7,
+    1271.4,
+    1266.0,
+    1269.0,
+    1300.0,
+    1188.8,
+    1104.5,
+    899.1,
+    823.1,
+    613.6,
+    605.3
+   ]
+  },
+  "gate_up_steps": {
+   "m1_to_m32": 0.203,
+   "m32_to_m48": 0.197,
+   "m128_to_m192": 0.357
+  },
+  "o_proj_steps": {
+   "m1_to_m32": -0.072,
+   "m32_to_m48": 0.098,
+   "m128_to_m192": 0.372
+  }
+ },
+ "metaxlink": {
+  "total_gbps_8card": 896,
+  "ports": 7,
+  "per_port_gbps": 128.0,
+  "nvlink_a100_gbps": 600,
+  "nvlink_h20_h200_gbps": 900,
+  "infinity_fabric_gbps_as_cited": 896,
+  "over_a100": 1.49,
+  "over_h200": 0.996
+ },
+ "compare": {
+  "bf16_tflops": {
+   "c500": 280,
+   "a100": 312,
+   "h20": 148,
+   "c500_over_a100": 0.897,
+   "c500_over_h20": 1.892
+  },
+  "fp32_tflops": {
+   "c500": 18,
+   "a100": 19.5,
+   "h20": null,
+   "c500_over_a100": 0.923,
+   "c500_over_h20": null
+  },
+  "tf32_tflops": {
+   "c500": 140,
+   "a100": 156,
+   "h20": null,
+   "c500_over_a100": 0.897,
+   "c500_over_h20": null
+  },
+  "int8_tops": {
+   "c500": 560,
+   "a100": 624,
+   "h20": 296,
+   "c500_over_a100": 0.897,
+   "c500_over_h20": 1.892
+  },
+  "memory_gb": {
+   "c500": 64,
+   "a100": 80,
+   "h20": 96,
+   "c500_over_a100": 0.8,
+   "c500_over_h20": 0.667
+  },
+  "hbm_tbps": {
+   "c500": 1.843,
+   "a100": 2.039,
+   "h20": 4.0,
+   "c500_over_a100": 0.904,
+   "c500_over_h20": 0.461
+  },
+  "interconnect_gbps": {
+   "c500": 896,
+   "a100": 600,
+   "h20": 900,
+   "c500_over_a100": 1.493,
+   "c500_over_h20": 0.996
+  },
+  "tdp_w": {
+   "c500": 350,
+   "a100": 400,
+   "h20": 400,
+   "c500_over_a100": 0.875,
+   "c500_over_h20": 0.875
+  },
+  "measured_c500": {
+   "bf16_gemm_over_a100_spec": 0.736,
+   "read_bw_over_a100_spec": 0.811,
+   "gemm_read_over_a100_spec": 0.747
+  }
+ },
+ "software": {
+  "repos_tested": 4490,
+  "repos_direct": 4173,
+  "repos_modified": 260,
+  "repos_unusable": 57,
+  "direct_rate": 92.94,
+  "modified_rate": 5.79,
+  "pytorch_ops": 2650,
+  "pytorch_gpu_ops": 2410,
+  "frameworks": 40,
+  "model_categories": 500,
+  "cuda_apps_supported": 6000,
+  "open_source_models": 1000,
+  "compiler_base_for_c500": "LLVM 12",
+  "compiler_test_cases": 13000,
+  "registered_dev_users_by_2025_07_31": 15000,
+  "triton_w12_m1_over_blas": 0.49,
+  "triton_w12_m32_over_blas": 0.11,
+  "triton_q8_m1_over_blas": 0.64,
+  "lds_fix_ms": 13.46,
+  "lds_before_ms": 59.72,
+  "lds_after_ms": 44.81,
+  "lds_gain": 1.333
+ },
+ "builtins": {
+  "kinds": 29,
+  "call_sites": 575,
+  "by_category": {
+   "矩阵乘加": 33,
+   "倒数": 196,
+   "打包的 FP32 乘加": 99,
+   "类型转换": 89,
+   "带谓词的全局读写": 61,
+   "其中直接进共享内存的": 23,
+   "位域提取": 60,
+   "同步": 23,
+   "字节重排": 10,
+   "投票计数": 4
+  },
+  "sum_of_disjoint_categories": 575
+ }
+}
