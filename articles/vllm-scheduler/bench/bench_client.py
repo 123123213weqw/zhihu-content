@@ -5,9 +5,13 @@
 所以彼此没有公共前缀,长度精确。每条请求记下发出时刻、每个 token 到达的时刻、
 服务端给的请求 id。结果写 JSON,路径相对本目录。
 
-别用随机 token id 当提示词。随机 id 解码出来大量是残缺的 UTF-8,前端的 detokenizer
-走慢路径,事件循环被卡住,token 成坨到达,客户端量到的间隔全是假的。引擎内部的
-步时间不受影响(调度记录器里是稳的),但首 token 时间和客户端一侧的间隔不能看。
+提示词用自然文本的 token id(一份英文原文,牛顿《光学》,的连续片段),不用随机 token id。
+
+写这篇时用随机 id 测过一轮,客户端量到的 token 间隔里有几十到几百毫秒的停顿,当时归因于
+随机 id 让前端的 detokenizer 走了慢路径。这个归因是错的:后来在前端那篇里量过,随机编号
+反分词每个 token 也只要 2 到 6 微秒,没有任何警告。停顿和机器上别人的任务占 CPU 是同时
+出现的,是前端的事件循环被抢了 CPU。引擎内部的步时间不受影响,但机器不空的时候,
+客户端一侧的间隔和首 token 时间不能看。
 
   bench_client.py decode_sweep --out results/sweep_short.json --batches 1,2,4,8,16,24,32,40,48,64,96,128,192,256 --prompt 64 --max-tokens 56
   bench_client.py decode_sweep --out results/sweep_long.json --batches 1,2,4,8,16,24,32,40,48,64 --prompt 256 --max-tokens 320
