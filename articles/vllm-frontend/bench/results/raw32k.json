@@ -1,0 +1,66 @@
+[
+ {
+  "quickack": false,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 43.6,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 46.3
+ },
+ {
+  "quickack": false,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 40.2,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 46.6
+ },
+ {
+  "quickack": false,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 41.3,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 45.9
+ },
+ {
+  "quickack": false,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 38.6,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 45.3
+ },
+ {
+  "quickack": true,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 37.7,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 44.7
+ },
+ {
+  "quickack": true,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 41.1,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 46.5
+ },
+ {
+  "quickack": true,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 39.2,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 56.6
+ },
+ {
+  "quickack": true,
+  "prompt_tokens": 32768,
+  "prefill_steps": 16,
+  "to_engine_ms": 39.0,
+  "empty_events": 0,
+  "first_token_after_tu_ms": 47.5
+ }
+]

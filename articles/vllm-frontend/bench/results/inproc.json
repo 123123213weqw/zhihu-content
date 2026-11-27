@@ -1,0 +1,33 @@
+{
+ "prompt_tokens": 32768,
+ "runs": [
+  {
+   "cpu": 36,
+   "freq_khz": 836990,
+   "after_idle_3s_ms": 44.7,
+   "immediately_again_ms": 26.54,
+   "py_loop_ms": 38.56
+  },
+  {
+   "cpu": 36,
+   "freq_khz": 1213297,
+   "after_idle_3s_ms": 14.16,
+   "immediately_again_ms": 12.68,
+   "py_loop_ms": 28.34
+  },
+  {
+   "cpu": 36,
+   "freq_khz": 800029,
+   "after_idle_3s_ms": 16.43,
+   "immediately_again_ms": 13.58,
+   "py_loop_ms": 27.89
+  },
+  {
+   "cpu": 36,
+   "freq_khz": 800049,
+   "after_idle_3s_ms": 16.06,
+   "immediately_again_ms": 14.33,
+   "py_loop_ms": 27.41
+  }
+ ]
+}

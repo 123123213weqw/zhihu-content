@@ -1,0 +1,26 @@
+[
+ {
+  "long_prompt_tokens": 32778,
+  "short_requests": 32,
+  "arrived_before_long": 32,
+  "admitted_before_long": 32,
+  "first_short_minus_long_ms": -165,
+  "last_short_minus_long_ms": -112
+ },
+ {
+  "long_prompt_tokens": 32777,
+  "short_requests": 32,
+  "arrived_before_long": 32,
+  "admitted_before_long": 32,
+  "first_short_minus_long_ms": -171,
+  "last_short_minus_long_ms": -89
+ },
+ {
+  "long_prompt_tokens": 32778,
+  "short_requests": 32,
+  "arrived_before_long": 32,
+  "admitted_before_long": 32,
+  "first_short_minus_long_ms": -126,
+  "last_short_minus_long_ms": -40
+ }
+]

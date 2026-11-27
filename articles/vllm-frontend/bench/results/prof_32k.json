@@ -1,0 +1,400 @@
+{
+ "request": {
+  "prompt_tokens": 32768,
+  "kind": "ids",
+  "to_engine_ms": 44.0,
+  "out_ms": 54.0
+ },
+ "decode_stream_step": {
+  "calls": 4,
+  "self_ms": 49.9,
+  "cum_ms": 49.9
+ },
+ "json": {
+  "calls": 1,
+  "self_ms": 9.1,
+  "cum_ms": 9.1
+ },
+ "validate": {
+  "calls": 1,
+  "self_ms": 0.0,
+  "cum_ms": 7.1
+ },
+ "packed_prompt": {
+  "calls": 1,
+  "self_ms": 3.4,
+  "cum_ms": 3.5
+ },
+ "output_handler": {
+  "calls": 1,
+  "self_ms": 0.0,
+  "cum_ms": 0.0
+ },
+ "detokenizer_update": {
+  "calls": 4,
+  "self_ms": 0.0,
+  "cum_ms": 50.0
+ },
+ "vllm_top": [
+  {
+   "func": "vllm/v1/engine/async_llm.py:890(output_handler)",
+   "calls": 19,
+   "self_ms": 0.5,
+   "cum_ms": 56.4
+  },
+  {
+   "func": "vllm/v1/engine/output_processor.py:731(process_outputs)",
+   "calls": 4,
+   "self_ms": 0.1,
+   "cum_ms": 50.6
+  },
+  {
+   "func": "vllm/v1/engine/detokenizer.py:98(update)",
+   "calls": 4,
+   "self_ms": 0.0,
+   "cum_ms": 50.0
+  },
+  {
+   "func": "vllm/v1/engine/detokenizer.py:224(decode_next)",
+   "calls": 4,
+   "self_ms": 0.0,
+   "cum_ms": 50.0
+  },
+  {
+   "func": "vllm/v1/engine/detokenizer.py:237(_protected_step)",
+   "calls": 4,
+   "self_ms": 0.0,
+   "cum_ms": 49.9
+  },
+  {
+   "func": "prometheus_fastapi_instrumentator/middleware.py:128(__call__)",
+   "calls": 5,
+   "self_ms": 0.1,
+   "cum_ms": 20.1
+  },
+  {
+   "func": "uvicorn/protocols/http/httptools_impl.py:420(run_asgi)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.9
+  },
+  {
+   "func": "uvicorn/middleware/proxy_headers.py:28(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.9
+  },
+  {
+   "func": "fastapi/applications.py:1156(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.9
+  },
+  {
+   "func": "starlette/applications.py:92(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.9
+  },
+  {
+   "func": "starlette/middleware/errors.py:149(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.8
+  },
+  {
+   "func": "starlette/middleware/cors.py:77(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.8
+  },
+  {
+   "func": "starlette/middleware/cors.py:147(simple_response)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.8
+  },
+  {
+   "func": "starlette/middleware/exceptions.py:47(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.1
+  },
+  {
+   "func": "starlette/_exception_handler.py:31(wrapped_app)",
+   "calls": 10,
+   "self_ms": 0.0,
+   "cum_ms": 19.1
+  },
+  {
+   "func": "fastapi/middleware/asyncexitstack.py:15(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.1
+  },
+  {
+   "func": "starlette/routing.py:679(__call__)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.0
+  },
+  {
+   "func": "starlette/routing.py:685(app)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 19.0
+  },
+  {
+   "func": "starlette/routing.py:280(handle)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 18.8
+  },
+  {
+   "func": "fastapi/routing.py:110(app)",
+   "calls": 5,
+   "self_ms": 0.0,
+   "cum_ms": 18.8
+  },
+  {
+   "func": "fastapi/routing.py:113(app)",
+   "calls": 5,
+   "self_ms": 0.1,
+   "cum_ms": 18.7
+  },
+  {
+   "func": "fastapi/routing.py:382(app)",
+   "calls": 3,
+   "self_ms": 0.2,
+   "cum_ms": 18.1
+  },
+  {
+   "func": "uvicorn/server.py:88(serve)",
+   "calls": 155,
+   "self_ms": 0.5,
+   "cum_ms": 16.3
+  },
+  {
+   "func": "uvicorn/server.py:92(_serve)",
+   "calls": 155,
+   "self_ms": 0.3,
+   "cum_ms": 15.9
+  },
+  {
+   "func": "uvicorn/server.py:242(main_loop)",
+   "calls": 155,
+   "self_ms": 2.3,
+   "cum_ms": 15.5
+  },
+  {
+   "func": "anyio/_core/_tasks.py:322(_run_coro)",
+   "calls": 4,
+   "self_ms": 0.0,
+   "cum_ms": 13.6
+  },
+  {
+   "func": "starlette/responses.py:280(wrap)",
+   "calls": 6,
+   "self_ms": 0.0,
+   "cum_ms": 13.6
+  },
+  {
+   "func": "starlette/responses.py:253(stream_response)",
+   "calls": 4,
+   "self_ms": 0.4,
+   "cum_ms": 13.3
+  },
+  {
+   "func": "vllm/entrypoints/openai/completion/serving.py:343(completion_stream_generator)",
+   "calls": 9,
+   "self_ms": 0.2,
+   "cum_ms": 11.3
+  },
+  {
+   "func": "vllm/utils/async_utils.py:91(merge_async_iterators)",
+   "calls": 7,
+   "self_ms": 0.0,
+   "cum_ms": 10.1
+  },
+  {
+   "func": "vllm/v1/engine/async_llm.py:740(generate)",
+   "calls": 7,
+   "self_ms": 0.0,
+   "cum_ms": 10.1
+  },
+  {
+   "func": "vllm/v1/engine/async_llm.py:411(add_request)",
+   "calls": 1,
+   "self_ms": 0.1,
+   "cum_ms": 10.0
+  },
+  {
+   "func": "starlette/requests.py:264(json)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 9.5
+  },
+  {
+   "func": "fastapi/dependencies/utils.py:598(solve_dependencies)",
+   "calls": 2,
+   "self_ms": 0.2,
+   "cum_ms": 7.6
+  },
+  {
+   "func": "vllm/entrypoints/serve/engine/protocol.py:44(__log_extra_fields__)",
+   "calls": 11,
+   "self_ms": 6.8,
+   "cum_ms": 7.3
+  },
+  {
+   "func": "fastapi/dependencies/utils.py:955(request_body_to_args)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 7.2
+  },
+  {
+   "func": "fastapi/dependencies/utils.py:738(_validate_value_with_model_field)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 7.1
+  },
+  {
+   "func": "fastapi/_compat/v2.py:173(validate)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 7.1
+  },
+  {
+   "func": "pydantic/type_adapter.py:362(validate_python)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 7.1
+  },
+  {
+   "func": "vllm/v1/engine/core_client.py:1246(process_outputs_socket)",
+   "calls": 19,
+   "self_ms": 0.4,
+   "cum_ms": 6.4
+  },
+  {
+   "func": "vllm/v1/engine/async_llm.py:581(_add_request)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 6.3
+  },
+  {
+   "func": "zmq/asyncio.py:151(<lambda>)",
+   "calls": 19,
+   "self_ms": 0.1,
+   "cum_ms": 5.7
+  },
+  {
+   "func": "zmq/_future.py:670(_handle_events)",
+   "calls": 19,
+   "self_ms": 1.1,
+   "cum_ms": 5.5
+  },
+  {
+   "func": "zmq/_future.py:270(recv_multipart)",
+   "calls": 21,
+   "self_ms": 0.1,
+   "cum_ms": 4.3
+  },
+  {
+   "func": "vllm/v1/engine/core_client.py:1371(add_request_async)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 4.2
+  },
+  {
+   "func": "uvicorn/server.py:251(on_tick)",
+   "calls": 155,
+   "self_ms": 1.2,
+   "cum_ms": 4.2
+  },
+  {
+   "func": "zmq/_future.py:470(_add_recv_event)",
+   "calls": 21,
+   "self_ms": 1.0,
+   "cum_ms": 4.2
+  },
+  {
+   "func": "vllm/v1/metrics/loggers.py:1421(record)",
+   "calls": 21,
+   "self_ms": 0.1,
+   "cum_ms": 4.0
+  },
+  {
+   "func": "zmq/_future.py:586(_handle_recv)",
+   "calls": 21,
+   "self_ms": 0.8,
+   "cum_ms": 3.5
+  },
+  {
+   "func": "vllm/v1/engine/input_processor.py:361(process_inputs)",
+   "calls": 1,
+   "self_ms": 0.1,
+   "cum_ms": 3.5
+  },
+  {
+   "func": "vllm/v1/engine/core_client.py:86(_with_packed_prompt)",
+   "calls": 1,
+   "self_ms": 3.4,
+   "cum_ms": 3.5
+  },
+  {
+   "func": "vllm/v1/metrics/loggers.py:1138(record)",
+   "calls": 21,
+   "self_ms": 0.8,
+   "cum_ms": 3.4
+  },
+  {
+   "func": "vllm/v1/engine/input_processor.py:644(_validate_model_inputs)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 3.1
+  },
+  {
+   "func": "vllm/v1/engine/input_processor.py:599(_validate_model_input)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 3.1
+  },
+  {
+   "func": "vllm/renderers/base.py:453(validate_token_ids)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 3.1
+  },
+  {
+   "func": "vllm/entrypoints/launchers/utils/server_utils.py:81(_force_log)",
+   "calls": 2,
+   "self_ms": 0.0,
+   "cum_ms": 2.0
+  },
+  {
+   "func": "vllm/v1/engine/output_processor.py:666(add_request)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 2.0
+  },
+  {
+   "func": "vllm/v1/engine/output_processor.py:276(from_new_request)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 2.0
+  },
+  {
+   "func": "vllm/v1/engine/detokenizer.py:51(from_new_request)",
+   "calls": 1,
+   "self_ms": 0.0,
+   "cum_ms": 1.9
+  },
+  {
+   "func": "vllm/v1/engine/detokenizer.py:182(__init__)",
+   "calls": 1,
+   "self_ms": 1.8,
+   "cum_ms": 1.9
+  }
+ ]
+}
