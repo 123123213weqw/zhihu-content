@@ -18,7 +18,7 @@ CUDA 里是同一个函数,默认掩码是 `0xffffffff`,32 个 1。这里数一�
 
 上一篇拆的是整颗芯片和软件栈。这一篇往下走一层,分三段。
 
-先讲怎么用:装环境,写第一个 kernel,再往上到 PyTorch,Triton,TVM。再讲和 CUDA 的设计差异,哪些只是换了名字,哪些是真的不一样。最后拆 C500 的核心:有没有类似 SM 的东西,寄存器怎么分。
+先讲怎么用:装环境,写第一个 kernel,再往上到 PyTorch,Triton,TVM。再讲和 CUDA 的设计差异:哪些只是换了名字,哪些是真的不一样,CUDA 的代码为什么能直接搬过来。最后拆 C500 的核心:有没有类似 SM 的东西,寄存器怎么分。
 
 资料以沐曦开发者文档中心 MXC500 的文档为准,版本 3.10.1。每个数是哪来的,文中分开写。
 
@@ -384,7 +384,66 @@ mxcc 基于 LLVM,问询回复里写 C500 选的是 LLVM12。输入文件的后�
 - **PTX 有公开的指令集文档,XCORE 没有。** 指令有 600 多条,能看到的只有编译器暴露出来的内建函数。
 - **C++ 标准**:C++11 和 C++14 完全支持,C++17 及以后是部分支持,文档写"不建议使用"。默认是 `-std=c++14`。
 
-## 八、往上走:PyTorch,Triton,TVM,vLLM
+## 八、为什么 CUDA 的代码能直接搬过来
+
+"无缝"两个字要先说准。官方的说法是源代码级兼容:源码不改,工程构建自动切到沐曦的工具链。二进制不通用,所有东西都要重新编一遍。
+
+它做得到,是因为一份 CUDA 项目只在几个固定的地方和 NVIDIA 的东西发生关系。沐曦把这几处都替上了自己的。cu-bridge 项目的原理图画的就是这件事:
+
+![两列对照图,左列是 CUDA 项目里的六样东西,右列是沐曦换上去的。nvcc 换成 cucc,一个脚本,转手调用 mxcc;make 和 cmake 换成 make_maca 和 cmake_maca;include cuda_runtime.h 换成 cu-bridge 的同名头文件,转去包含 mc_runtime.h;cudaMalloc 和 cudaMemcpy 这些函数名用宏接到封装函数,封装函数再调 mcMalloc;-lcublas -lcudnn -lnccl 换成 mcBLAS,mcDNN,MCCL;PyTorch,vLLM,Triton 的源码用这套工具链重新编一遍](images/fig5_bridge.png)
+
+打个比方,一辆车认的是油枪的口径和配件的编号。沐曦照着口径做了油枪,照着编号做了配件,车开过来不用改,加的是另一家的油。
+
+逐处看。
+
+**编译器。** `cucc` 是一个脚本,接下 `nvcc` 的活,转手调用 `mxcc`。mxcc 基于 LLVM,选项表和 clang 的 CUDA 选项是同一套名字。`__global__`,`__device__`,三尖括号,这些 CUDA 的 C++ 写法编译器直接认。
+
+**构建系统。** `make_maca` 和 `cmake_maca` 是换了工具链的 make 和 cmake。沐曦算子库的 `setup.py` 里就是一行:
+
+```python
+CMAKE_EXECUTABLE = 'cmake' if not USE_MACA else 'cmake_maca'
+```
+
+**头文件。** 源码里写的是 `#include <cuda_runtime.h>`。编译的时候先找到的是 cu-bridge 里的同名头文件。它做两件事:包含 `<mc_runtime.h>`,再包含一个封装头。
+
+**函数名。** 封装头里是一串宏,把 CUDA 的函数名接到另一组名字上:
+
+```cpp
+#define cudaMalloc wcudaMalloc
+#define cudaMemcpy wcudaMemcpy
+```
+
+`wcudaMalloc` 的实现编在 `cuBridge.so` 里,里面调的是 `mcMalloc`。源码里的名字一个没动。
+
+**库。** cuBLAS 换成 mcBLAS,cuDNN 换成 mcDNN,NCCL 换成 MCCL,函数的签名照着原来的写。
+
+**框架。** PyTorch,vLLM,Triton 的源码用这套工具链重新编一遍,就是 mcPyTorch,vllm-metax,mcTriton。
+
+沐曦自己的算子库 mcoplib 就是这么编的。`op` 和 `kernel` 两个目录下有 199 个 `.cu` 文件,107 个 `.cuh` 文件。
+
+它的 `setup.py` 引的是 PyTorch 的 `CUDAExtension`。注释里写 nvcc 的线程数选项"仅在使用 CUDA/MACA 的 nvcc/cucc 时才有意义"。
+
+再往下一层问,为什么替得上。
+
+**硬件是照着同一套抽象机造的。** 问询回复的原话是:"发行人全系列产品与英伟达均采用统一的通用 GPU 架构,包括与 SIMT 相关的通用指令集,L2 cache 高级操作特性及高性能 GPU 架构设计等,为兼容 CUDA 奠定了坚实的基础。"
+
+线程有自己的指令地址计数器和寄存器。线程束,线程块,共享内存,全局内存,每一样都对得上,同一份源码才能编出同样的语义。
+
+**NVIDIA 公开的是接口,不是实现。** 头文件,运行时 API,库的函数签名,PTX 指令集,都有文档。照着接口写一套自己的实现,是走得通的路。AMD 的 HIP 也是这个思路。
+
+**接口是稳的。** NVIDIA 自己要保证老代码在新卡上能跑,CUDA 的接口只能往上加。照着这套接口做的东西,也就跟着稳。这一条是推论,不是哪份文档里的话。
+
+**然后是测。** 问询回复里列的名词有:海量应用测试集,随机形式化验证,差分验证,全软件栈的自动化回归测试。
+
+缝在哪里,沐曦技术报告里有一个逐项的数。4,490 个带 CUDA 的仓库,4,173 个不用改代码。260 个改一点就能用。57 个不行。
+
+$$\frac{4173}{4490} = 92.94\%, \qquad \frac{260}{4490} = 5.79\%, \qquad \frac{57}{4490} = 1.27\%$$
+
+不行的 57 个,报告里拆成 11 个编译失败,46 个运行失败。
+
+能跑和跑得快也是两回事。上一篇量过,位运算能让 Triton 掉到 mcBLAS 的 0.11 到 0.49 倍。这篇讲过的三处也在:64 位的掩码,不支持的 FP8,不支持的内联汇编。
+
+## 九、往上走:PyTorch,Triton,TVM,vLLM
 
 不写 kernel,只在框架里用,差别更小。
 
@@ -447,7 +506,7 @@ docker run -it --device=/dev/mxcd --device=/dev/dri --group-add video ${image_na
 
 打个比方,越往上走,越看不出发动机换了。到 PyTorch 这一层,连设备的名字都还叫 `cuda`。
 
-## 九、哪些数还没有出处
+## 十、哪些数还没有出处
 
 C500 自己的设备信息,沐曦没有公开过。下面这些数,文中用的是 N260 的,因为两者是同一个大版本:
 
@@ -469,7 +528,7 @@ N260 输出里的 L1 32 KB,L2 8 MB,最高 1600 MHz,是那一颗芯片的,文中�
 
 "Fast Float16 Operation: FALSE"这一行,和第三方在 C500 上量到的对得上:`__hfma2` 比 FP32 的乘加还慢。沐曦打包的是 FP32,内建函数是 `__builtin_mxc_pk_fma_f32`。
 
-## 十、面试里会问的
+## 十一、面试里会问的
 
 **1. 沐曦 GPU 上对应 SM 的是什么?里面怎么分?**
 
@@ -511,7 +570,13 @@ N260 输出里的 L1 32 KB,L2 8 MB,最高 1600 MHz,是那一颗芯片的,文中�
 
 答:硬件没有为打包的半精度运算做专门的加速,`macainfo` 里写的是"Fast Float16 Operation: FALSE"。第三方在 C500 上量到 `__hfma2` 比 FP32 的乘加还慢。要打包,沐曦打包的是 FP32,`__builtin_mxc_pk_fma_f32`。
 
-## 十一、总结
+**11. 为什么 CUDA 的代码能直接搬到沐曦上?**
+
+答:一份 CUDA 项目只在几个固定的地方和 NVIDIA 发生关系,沐曦把这几处都替上了自己的。编译器,`cucc` 接 `nvcc` 的活,转手调 `mxcc`。构建,`make_maca` 和 `cmake_maca`。头文件,同名的 `cuda_runtime.h` 转去包含 `mc_runtime.h`。函数名,用宏接到封装函数,再调 `mc` 开头的 API。库,换成 mcBLAS 这些。
+
+底层替得上,是因为硬件照着同一套 SIMT 的抽象机造:线程,线程束,线程块,共享内存,每一样都对得上。
+
+## 十二、总结
 
 **1. 沐曦有和 SM 对应的东西,叫 AP。** 4 个 PEU,32 条线程束,每条 64 个线程,一共 2048 个线程。
 
@@ -523,6 +588,8 @@ N260 输出里的 L1 32 KB,L2 8 MB,最高 1600 MHz,是那一颗芯片的,文中�
 
 **5. 越往上越像 CUDA。** PyTorch 里设备还叫 `cuda`,计算能力报的是 8.0。
 
+**6. 无缝靠的是替零件。** 编译器,构建,头文件,函数名,库,换成沐曦自己的,源码不用动。4,490 个仓库里 92.94% 不用改代码。
+
 沐曦公开的设备参数很少。这篇里每个 AP 的数值来自曦思 N260,寄存器的分工和每个 PEU 的通路数是按用法读出来的,文中都标了。
 
 如果这个系列对你有用,点个赞或关注专栏,更新会持续。
@@ -531,7 +598,9 @@ N260 输出里的 L1 32 KB,L2 8 MB,最高 1600 MHz,是那一颗芯片的,文中�
 
 *出处与证据等级。沐曦官方文档, MXC500, 版本 3.10.1:《MXMACA C++编程指南》 (线程束内函数, 执行配置, Launch Bounds, 内联汇编), 《运行时API编程指南》 (编程模型, 设备查询, 计算能力, 运行时编译), 《MXMACA运行时API参考》 (设备属性, 共享内存配置, 占用率), 《mxcc编译器用户指南》, 《MXMACA编译器内建函数编程指南》, 《mcPyTorch用户指南》, 《mcTriton用户指南》, 《快速上手指南》, 《mx-smi使用手册》。都在 developer.metax-tech.com/doc。*
 
-*沐曦官方代码: GitHub 组织 MetaX-MACA 下的 maca-samples (vectorAdd 等), mcoplib (提交 39511c5, GPTQ 矩阵乘文件头的注释), mcTVM 的 README, mcPytorch 和 vLLM-metax 的 README。*
+*沐曦官方代码: GitHub 组织 MetaX-MACA 下的 maca-samples (vectorAdd 等), mcoplib (提交 39511c5, GPTQ 矩阵乘文件头的注释, setup.py, op 和 kernel 目录下的文件数), mcTVM 的 README, mcPytorch 和 vLLM-metax 的 README。*
+
+*cu-bridge 项目 (Gitee, p4ul/cu-bridge, Apache-2.0) 的原理图和使用指南。4,490 个仓库的数取自《沐曦股份MXMACA-3.3.0.X简要技术报告》。*
 
 *曦思 N260 上 macainfo 的输出: 掘金专栏「沐曦异构并行计算软件栈」第 2 章 (2025 年 2 月 12 日)。*
 

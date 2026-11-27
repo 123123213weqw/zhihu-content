@@ -11,6 +11,7 @@
                芯片名 XCORE1020, 按《运行时API编程指南》计算能力 10.20 就是 N260, 和 C500 (10.00) 同一个大版本、同一条指令集
   【实测】     gitlink.org.cn/JunkaiShi/c500-specpilot 的实验日志 (整卡), ASKCOS 用 xpu-perf 做的算子级测试 (CSDN, 2026-10-14, 切片)
   【对比】     NVIDIA 的 H100 SM 取自本专栏《GPU 的心脏:SM 内部解剖》那篇; Ampere 的 mma.m16n8k16 取自 NVIDIA 的 PTX 文档
+  【cu-bridge】 Gitee 上 p4ul/cu-bridge 项目的原理图和使用指南 (Apache-2.0); 沐曦软件包把它装在 /opt/maca/tools 下
   推算        自己的计算, 前提写在注释里
 
 Run:  python3 calc.py  ->  bench/calc_summary.json
@@ -130,6 +131,19 @@ out["compare"] = {
 out["capability"] = {"mxmaca": {"C500": "10.00", "C550": "10.02", "N260": "10.20", "C600 系列": "15.xx"},
                      "offload_arch": {"通用": "xcore1000", "C500 专用": "xcore1000", "C550 专用": "xcore1002"},
                      "pytorch_reports": "8.0 (sm_80)"}
+
+# ---------------------------------------------------------------- 9. "无缝"的成色
+# 《沐曦股份MXMACA-3.3.0.X简要技术报告》: GitHub 上 4,490 个带 CUDA 的仓库, 4,173 个不用改代码, 260 个改一点, 57 个不行
+repos, direct, modified, unusable = 4490, 4173, 260, 57
+out["compat"] = {
+    "repos": repos, "direct": direct, "direct_rate": round(direct / repos * 100, 2),
+    "modified": modified, "modified_rate": round(modified / repos * 100, 2),
+    "unusable": unusable, "unusable_rate": round(unusable / repos * 100, 2),
+    "sum_check": direct + modified + unusable,
+    # 沐曦自己的算子库 mcoplib (提交 39511c5): op 和 kernel 两个目录下按后缀数文件
+    "mcoplib_cu_files": 199, "mcoplib_cuh_files": 107, "mcoplib_h_files": 60,
+    "seams": ["编译器", "构建系统", "头文件", "函数名", "库", "框架源码"],
+}
 
 json.dump(out, open(os.path.join(HERE, "bench", "calc_summary.json"), "w"), indent=1, ensure_ascii=False)
 for k, v in out.items():

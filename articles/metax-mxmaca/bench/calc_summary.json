@@ -221,5 +221,26 @@
    "C550 专用": "xcore1002"
   },
   "pytorch_reports": "8.0 (sm_80)"
+ },
+ "compat": {
+  "repos": 4490,
+  "direct": 4173,
+  "direct_rate": 92.94,
+  "modified": 260,
+  "modified_rate": 5.79,
+  "unusable": 57,
+  "unusable_rate": 1.27,
+  "sum_check": 4490,
+  "mcoplib_cu_files": 199,
+  "mcoplib_cuh_files": 107,
+  "mcoplib_h_files": 60,
+  "seams": [
+   "编译器",
+   "构建系统",
+   "头文件",
+   "函数名",
+   "库",
+   "框架源码"
+  ]
  }
 }

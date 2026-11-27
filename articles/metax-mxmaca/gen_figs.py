@@ -207,8 +207,40 @@ def fig4_budget():
     save(fig, "fig4_budget.png")
 
 
+# ---------------------------------------------------------------------------------------------- fig5
+def fig5_bridge():
+    """Where MXMACA substitutes its own parts under an unchanged CUDA project (cu-bridge's own design diagram)."""
+    rows = [
+        ("nvcc hello.cu", "cucc:一个脚本,转手调用 mxcc"),
+        ("make / cmake", "make_maca / cmake_maca,工具链换成沐曦的"),
+        ("#include <cuda_runtime.h>", "cu-bridge 的同名头文件:转去包含 mc_runtime.h"),
+        ("cudaMalloc, cudaMemcpy, ...", "#define cudaMalloc wcudaMalloc,封装函数再调 mcMalloc"),
+        ("-lcublas -lcudnn -lnccl", "mcBLAS, mcDNN, MCCL"),
+        ("PyTorch, vLLM, Triton 的源码", "用这套工具链重新编一遍:mcPyTorch, vllm-metax, mcTriton"),
+    ]
+    fig, ax = plt.subplots(figsize=(7.2, 3.5))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.axis("off")
+    ax.text(50, 94, "CUDA 的项目一行不改,沐曦在六处换上自己的零件", ha="center", va="center", fontsize=10, fontweight="bold", color=DARK)
+    ax.text(23, 86.5, "CUDA 项目里的", ha="center", va="center", fontsize=8.4, color=GREEN, fontweight="bold")
+    ax.text(74, 86.5, "沐曦换上去的", ha="center", va="center", fontsize=8.4, color=PLUM, fontweight="bold")
+    h, gap = 10.4, 2.2
+    for i, (left, right) in enumerate(rows):
+        y = 82.5 - (i + 1) * (h + gap)
+        rbox(ax, 2, y, 42, h, "#d9efd9", ec=GREEN)
+        ax.text(23, y + h / 2, left, ha="center", va="center", fontsize=8.0, color=DARK)
+        ax.add_patch(FancyArrowPatch((45.2, y + h / 2), (49.8, y + h / 2), arrowstyle="-|>", mutation_scale=10, color=GRAY, lw=1.1))
+        rbox(ax, 50.5, y, 47.5, h, "#f7e3d3", ec=PLUM)
+        ax.text(74.25, y + h / 2, right, ha="center", va="center", fontsize=7.7, color=DARK)
+    ax.text(50, 2.2, "前五行出自 cu-bridge 项目的原理图和使用指南,第六行出自沐曦各仓库的说明。", ha="center", va="center", fontsize=7.4, color=GRAY)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.02)
+    save(fig, "fig5_bridge.png")
+
+
 if __name__ == "__main__":
     fig1_ap_vs_sm()
     fig2_wave()
     fig3_toolchain()
     fig4_budget()
+    fig5_bridge()
