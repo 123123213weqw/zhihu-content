@@ -1,0 +1,225 @@
+{
+ "ap": {
+  "n260_ap_count": 56,
+  "peu_per_ap": 4,
+  "waves_per_ap": 32,
+  "lanes_per_wave": 64,
+  "waves_per_peu": 8,
+  "threads_per_peu": 512,
+  "threads_per_ap": 2048,
+  "workgroup_max": 1024,
+  "waves_in_max_workgroup": 16,
+  "max_workgroup_spans_peus": 2.0,
+  "named_barriers_per_workgroup": 32,
+  "group_mem_kb": 64,
+  "group_mem_bytes": 65536,
+  "l1_kb_n260": 32,
+  "l2_kb_n260": 8192,
+  "cacheline_bytes": 128,
+  "max_clock_mhz_n260": 1600,
+  "lanes_per_peu_if_wave_is_64_wide": 16,
+  "c500_ap_count_third_party": 104
+ },
+ "smem": {
+  "banks": 32,
+  "bank_bytes": 4,
+  "row_bytes": 128,
+  "rows_in_64kb": 512,
+  "case_stride_bytes": 144,
+  "case_stride_words": 36,
+  "case_ms_before": 63.02,
+  "case_ms_after": 49.55,
+  "case_saved_ms": 13.47,
+  "kernel_comment_block_threads": 256,
+  "kernel_comment_block_waves": 4,
+  "kernel_comment_block_smem_kb": 16,
+  "kernel_comment_mtreg": 128
+ },
+ "wave": {
+  "rows": 4,
+  "lanes_per_row": 16,
+  "quads": 16,
+  "lanes_per_quad": 4,
+  "mask_bits_mxac": 64,
+  "mask_bits_cuda": 32,
+  "lanes_covered_by_32bit_mask": 32,
+  "share_of_wave_covered_by_32bit_mask": 0.5,
+  "nvidia_warp_lanes": 32
+ },
+ "mma": {
+  "16x16x16f16": {
+   "k": 16,
+   "regs_a": 2,
+   "regs_b": 2,
+   "regs_acc": 4,
+   "macs": 4096,
+   "macs_per_thread": 64,
+   "arch": ""
+  },
+  "16x16x16bf16": {
+   "k": 16,
+   "regs_a": 2,
+   "regs_b": 2,
+   "regs_acc": 4,
+   "macs": 4096,
+   "macs_per_thread": 64,
+   "arch": ""
+  },
+  "16x16x16i8": {
+   "k": 16,
+   "regs_a": 1,
+   "regs_b": 1,
+   "regs_acc": 4,
+   "macs": 4096,
+   "macs_per_thread": 64,
+   "arch": "xcore1500 以下"
+  },
+  "16x16x32i8": {
+   "k": 32,
+   "regs_a": 2,
+   "regs_b": 2,
+   "regs_acc": 4,
+   "macs": 8192,
+   "macs_per_thread": 128,
+   "arch": "xcore1500 起"
+  },
+  "16x16x8tf32": {
+   "k": 8,
+   "regs_a": 2,
+   "regs_b": 2,
+   "regs_acc": 4,
+   "macs": 2048,
+   "macs_per_thread": 32,
+   "arch": ""
+  },
+  "16x16x4f32": {
+   "k": 4,
+   "regs_a": 1,
+   "regs_b": 1,
+   "regs_acc": 4,
+   "macs": 1024,
+   "macs_per_thread": 16,
+   "arch": ""
+  },
+  "16x16x4f64": {
+   "k": 4,
+   "regs_a": 2,
+   "regs_b": 2,
+   "regs_acc": 8,
+   "macs": 1024,
+   "macs_per_thread": 16,
+   "arch": ""
+  }
+ },
+ "mma_compare": {
+  "nvidia_m16n8k16_macs": 2048,
+  "nvidia_m16n8k16_lanes": 32,
+  "nvidia_m16n8k16_macs_per_thread": 64,
+  "mxmaca_m16n16k16_macs_per_thread": 64,
+  "int8_over_bf16_peak": 2.0,
+  "tf32_over_bf16_peak": 0.5,
+  "int8_mma_macs_ratio": 1.0,
+  "tf32_mma_macs_ratio": 0.5
+ },
+ "budget": {
+  "32x32": {
+   "rows": 32,
+   "cols": 32,
+   "tiles": 4,
+   "acc": 16,
+   "a": 4,
+   "b": 4,
+   "total": 24
+  },
+  "64x64": {
+   "rows": 64,
+   "cols": 64,
+   "tiles": 16,
+   "acc": 64,
+   "a": 8,
+   "b": 8,
+   "total": 80
+  },
+  "128x64": {
+   "rows": 128,
+   "cols": 64,
+   "tiles": 32,
+   "acc": 128,
+   "a": 16,
+   "b": 8,
+   "total": 152
+  },
+  "64x128": {
+   "rows": 64,
+   "cols": 128,
+   "tiles": 32,
+   "acc": 128,
+   "a": 8,
+   "b": 16,
+   "total": 152
+  },
+  "128x128": {
+   "rows": 128,
+   "cols": 128,
+   "tiles": 64,
+   "acc": 256,
+   "a": 16,
+   "b": 16,
+   "total": 288
+  },
+  "mtreg_limit_in_kernel_comment": 128,
+  "fits_under_128": {
+   "32x32": true,
+   "64x64": true,
+   "128x64": false,
+   "64x128": false,
+   "128x128": false
+  }
+ },
+ "registers": {
+  "h100_regs_per_sm": 65536,
+  "h100_bytes": 262144,
+  "h100_threads_per_sm": 2048,
+  "h100_regs_per_thread_at_full": 32,
+  "h100_max_regs_per_thread": 255,
+  "mxmaca_regs_per_ap": null,
+  "mxmaca_two_classes": {
+   "mtreg": "-maxrregcount 限它的数量",
+   "streg": "-maxsregcount 限它的数量; 内建函数指南写成 single thread register"
+  },
+  "example_if_64k_waves_resident_at_128_regs": 8
+ },
+ "compare": {
+  "nvidia_h100_sm": {
+   "sub_units": 4,
+   "lanes_per_wave": 32,
+   "waves": 64,
+   "threads": 2048,
+   "regs": 65536,
+   "threads_per_block_max": 1024
+  },
+  "metax_ap_n260": {
+   "sub_units": 4,
+   "lanes_per_wave": 64,
+   "waves": 32,
+   "threads": 2048,
+   "threads_per_block_max": 1024,
+   "regs": null
+  },
+  "same_threads_per_unit": true
+ },
+ "capability": {
+  "mxmaca": {
+   "C500": "10.00",
+   "C550": "10.02",
+   "N260": "10.20",
+   "C600 系列": "15.xx"
+  },
+  "offload_arch": {
+   "通用": "xcore1000",
+   "C500 专用": "xcore1000",
+   "C550 专用": "xcore1002"
+  },
+  "pytorch_reports": "8.0 (sm_80)"
+ }
+}
