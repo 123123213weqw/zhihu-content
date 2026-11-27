@@ -1,7 +1,10 @@
 ---
 title: vLLM 的前端是怎么设计的:一条请求怎么进去,token 怎么出来
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2109578112317011523
+id: 2109578112317011523
+published: 2026-11-27
 column: c_2108645240148185763
 ---
 
