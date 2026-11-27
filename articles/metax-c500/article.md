@@ -1,9 +1,13 @@
 ---
 title: 沐曦 C500 技术分解:一条矩阵指令 4096 次乘加,对标 A100 的账怎么算,和一套长得像 CUDA 的软件栈
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2109565213892781899
+id: 2109565213892781899
 created: 2026-11-27
+published: 2026-11-27
 tags: [gpu, metax, c500, hardware, xcore, mxmaca, tensor-core, hbm, metaxlink, deep-learning]
+column: c_2105626406768199400
 ---
 
 你写 `__builtin_mxc_mma_16x16x16bf16(a, b, c)` 这一行的时候,一条指令,16 × 16 × 16,4096 次乘加,由一条 64 线程的波前一起做完。
