@@ -1,9 +1,13 @@
 ---
 title: 在沐曦 C500 上优化 Qwen3.8-27B:GDN 怎么落到 AP 上,融合 kernel 和 CUDA Graph 怎么写,换算子怎么不怕升级,两级验证怎么接进 vLLM
 topics: []
-status: draft
+status: published
+url: https://zhuanlan.zhihu.com/p/2109938345077904995
+id: 2109938345077904995
 created: 2026-11-27
+published: 2026-11-28
 tags: [gpu, metax, c500, gdn, vllm, cuda-graph, triton, kernel, mxmaca, optimization, speculative-decoding]
+column: c_2105626406768199400
 ---
 
 这是沐曦给 C500 写的 GDN kernel 里的两句:
