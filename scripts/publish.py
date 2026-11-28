@@ -20,6 +20,8 @@ status/url/id/published back into the frontmatter.
 --dry-run: render HTML only, do not upload or publish.
 --force:   allow republishing an article whose status is already published
            (creates a NEW article on Zhihu; it does not update the old one).
+--update:  replace the content of the already-published article in place
+           (article id taken from the frontmatter); the article goes through review again.
 """
 
 from __future__ import annotations
@@ -222,12 +224,17 @@ def main() -> None:
     column = args.column or meta.get("column") or None
     if not title:
         die("frontmatter 'title' is required")
-    if meta.get("status") == "published" and not args.force:
+    if meta.get("status") == "published" and not (args.force or args.update):
         die("already published (status=published). Use --force to publish again as a NEW article.")
     topics = [str(t) for t in (meta.get("topics") or [])]
 
     md = MarkdownIt("commonmark", {"typographer": True}).enable("table")
     html = render_markdown_with_formulas(md, body)
+    # Zhihu drops formula tags inside table cells and leaves the cell without them (seen on the
+    # live page of every published article that had one), so refuse to send them at all
+    if any('eeimg="1"' in t for t in re.findall(r"<table[^>]*>.*?</table>", html, flags=re.S)):
+        die("a table cell contains a formula and Zhihu drops it; write the cell in plain text "
+            "(log₂ N, O(N), b^(d/2))")
 
     # --- collect local images referenced in the rendered html ---
     local_imgs: list[tuple[str, str]] = []  # (src, rest-of-tag attrs)
@@ -276,18 +283,7 @@ def main() -> None:
         aid = str(meta.get("id") or "")
         if not aid:
             die("--update needs a published article id in frontmatter")
-        info(f"uploading images (dedup by hash)...")
-        for m in IMG_RE.finditer(html):
-            src, rest = m.group(1), m.group(2)
-            if src.startswith(("http://", "https://", "//")):
-                continue
-            img_path = (path.parent / src).resolve()
-            if not img_path.is_file():
-                die(f"image not found: {img_path}")
-            up = upload_with_retry(client, img_path)
-            alt_m = alt_re.search(rest)
-            new_tag = zhihu_img_tag(up, alt_m.group(1) if alt_m else "")
-            html = html.replace(f'<img src="{src}"{rest}>', new_tag)
+        # images were already uploaded and swapped in the loop above
         r = client._session.patch(
             f"https://zhuanlan.zhihu.com/api/articles/{aid}/draft",
             json={"title": title, "content": html}, timeout=30)
@@ -304,7 +300,7 @@ def main() -> None:
             f"https://zhuanlan.zhihu.com/api/articles/{aid}", timeout=15).json()
         got = back.get("content", "")
         n_f = got.count("eeimg"); n_t = got.count('data-draft-type="table"')
-        n_i = len(re.findall(r"zhimg\.com/v2-|pic\.zhihu\.com/v2-", got))
+        n_i = len(re.findall(r"<img(?![^>]*eeimg)", got))
         client.close()
         print(f"\n✓ Updated in place: https://zhuanlan.zhihu.com/p/{aid}")
         print(f"  readback: formulas={n_f} tables={n_t} figures={n_i} chars={len(got)}")

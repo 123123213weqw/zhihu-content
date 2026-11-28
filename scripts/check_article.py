@@ -11,6 +11,7 @@ Checks:
   - every image referenced in the body exists and decodes
   - no **bold** marker that markdown-it will not close (a closing ** preceded by
     punctuation and followed directly by text renders as literal asterisks)
+  - no formula inside a table row: Zhihu drops formula tags in table cells
   - house style: paragraphs of at most ~3 lines, at most one bold span a paragraph,
     no full-width punctuation other than the enumeration comma, no filler words
 Run it before the KaTeX check and the dry run.
@@ -57,6 +58,20 @@ def main() -> int:
     if unclosed:
         ok = False
     print(f"加粗没闭合的行:{len(unclosed)}")
+
+    # Zhihu drops formula tags inside table cells and leaves the cell without them (seen on the
+    # live page of every published article that had one), so a cell has to say it in plain text
+    in_code, table_math = False, []
+    for n, line in enumerate(body.split("\n"), 1):
+        if line.startswith("```"):
+            in_code = not in_code
+        elif not in_code and line.lstrip().startswith("|") and re.search(r"\$[^$\n]+?\$", line):
+            table_math.append((n, line[:60]))
+    for n, line in table_math:
+        print(f"  表格里的公式(知乎会去掉):第 {n} 行(相对正文): {line}")
+    if table_math:
+        ok = False
+    print(f"表格里的公式:{len(table_math)}")
 
     paras, code_blocks, longest = [], 0, 0
     in_code = False

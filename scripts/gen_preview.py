@@ -11,7 +11,8 @@ Usage:  uv run scripts/gen_preview.py articles/<slug> /tmp/<name>-preview.html
 
 Renders the body the way scripts/publish.py does (same parser, same table format, same formula tags), embeds
 every local image as a data URI, and typesets the formulas with KaTeX in the browser. A status line at the top
-counts formulas rendered and images loaded, so a screenshot tells whether the page is fit to show.
+counts formulas rendered and images loaded, so a screenshot tells whether the page is fit to show. A formula
+inside a table cell is replaced by a red marker, because Zhihu drops it on the published page.
 """
 from __future__ import annotations
 
@@ -62,8 +63,12 @@ function report() {{
   var loaded = imgs.filter(function (i) {{ return i.complete && i.naturalWidth > 0; }}).length;
   var done = document.querySelectorAll('article .katex').length;
   var total = +document.body.getAttribute('data-formulas') || 0;
-  var text = '公式 ' + total + ' 个,已排版 ' + done + ' 个;图片 ' + imgs.length + ' 张,已加载 ' + loaded + ' 张';
-  document.getElementById('status').textContent = text + (done === total && loaded === imgs.length ? '  ✓' : '  …');
+  var dropped = document.querySelectorAll('article mark[data-dropped]').length;
+  var text = '公式 ' + (total - dropped) + ' 个,已排版 ' + done + ' 个'
+           + (dropped ? ';表格里的公式 ' + dropped + ' 个,知乎会去掉' : '')
+           + ';图片 ' + imgs.length + ' 张,已加载 ' + loaded + ' 张';
+  document.getElementById('status').textContent = text
+    + (done === total - dropped && loaded === imgs.length && !dropped ? '  ✓' : '  …');
 }}
 window.addEventListener('load', function () {{
   var imgs = Array.from(document.querySelectorAll('img[eeimg="1"]'));
@@ -76,6 +81,14 @@ window.addEventListener('load', function () {{
     try {{ katex.render(tex, out, {{ displayMode: alone, throwOnError: true }}); }}
     catch (e) {{ out.textContent = '[KaTeX 报错] ' + tex; }}
     img.replaceWith(out);
+  }});
+  // Zhihu drops formula tags inside table cells, so the preview must not show them either
+  Array.from(document.querySelectorAll('article td .katex, article th .katex')).forEach(function (k) {{
+    var mark = document.createElement('mark');
+    mark.setAttribute('data-dropped', '1');
+    mark.style.background = '#ffb3b3';
+    mark.textContent = '[知乎会去掉表格里的公式]';
+    k.replaceWith(mark);
   }});
   report();
   setTimeout(report, 1500);
