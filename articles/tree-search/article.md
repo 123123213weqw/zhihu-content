@@ -561,7 +561,7 @@ $$\text{cost} \approx (\text{path length}) \times (\text{cost per step})$$
 
 答:前缀缓存问的是开头相同的多长。SGLang 用基数树,vLLM 用链式哈希表。采样里的 top-k 是堆的思路。asyncio 的事件循环用堆找最早的定时器。RAG 的向量检索用图索引。
 
-vLLM 的链式哈希在 v0.34.0 的 `kv_cache_utils.py:954`,一块的哈希里带着它前面所有的块。
+vLLM 的链式哈希在 v0.34.0 的 `kv_cache_utils.py:957`,一块的哈希里带着它前面所有的块。
 
 **11. 怎么判断该不该用树?**
 
