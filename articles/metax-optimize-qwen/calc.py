@@ -8,7 +8,10 @@
               vLLM-metax v0.28.0 (分支 releases/v0.28.0): pyproject.toml, vllm_metax/patch/, vllm_metax/registry/, requirements/maca_private.txt
   【官方文档】 沐曦开发者文档中心 MXC500 版本 3.10.1 的《运行时API编程指南》《mcTriton用户指南》《mcPyTorch用户指南》;
               上游 vLLM 的 docs/design/custom_op.md; vLLM-metax 的 vllm_metax/patch/README.md 和 AUDIT.md
-  【第三方】   gitlink.org.cn/JunkaiShi/c500-specpilot 的实验日志: Qwen3.8-27B 的层结构, GDN 的耗时, CUDA Graph 的收益和踩过的坑
+  【第三方】   gitlink.org.cn/JunkaiShi/c500-specpilot 的实验日志: Qwen3.8-27B 的层结构, GDN 的耗时, CUDA Graph 的收益和踩过的坑;
+              各阶段耗时, 宽度扫描, 量化副本的对照表, 噪声注入 (原始数字在 bench/tlv.json)
+  【复测】     同一份代码换一张 C500: 5 道短题, 公开 20 题, 16 路并发, vLLM 线上换 kernel 的收益, 接到 vLLM 上的结果 (bench/tlv.json)
+  【论文】     SpecPilot, arXiv 2611.02501 (bench/tlv.json)
   推算        自己的计算, 前提写在注释里
 
 Run:  python3 calc.py  ->  bench/calc_summary.json
@@ -113,6 +116,85 @@ out["hooks"] = {
     "chunk_kernel_patch": "chunk_gated_delta_rule_fwd_kernel_h_blockdim64 的 num_stages 砍成 [1], 整个文件只标了这一处改动",
     # RMSNorm 的 Triton kernel 要把一行装进一个块 (本专栏融合算子那篇). Qwen3.8-27B 的隐藏维是 5120, 块要取 2 的幂
     "hidden_size": 5120, "block_for_rmsnorm": 8192, "lanes_outside_mask_share": round(1 - 5120 / 8192, 3),      # 0.375
+}
+
+# ---------------------------------------------------------------- 6. 投机解码与两级验证 (第十到第十四节)
+# 原始数字在 bench/tlv.json 里, 每条带出处:
+#   【第三方】   作者的实验日志: 各阶段耗时, 宽度扫描, 量化副本的对照表, 噪声注入, 公开 20 题
+#   【复测】     同一份代码换一张 C500: 5 道短题, 公开 20 题, 16 路并发, vLLM 线上换 kernel 的收益, 接到 vLLM 上的结果
+#   【论文】     SpecPilot, arXiv 2611.02501: H100 上第一趟和精确趟的比例, 每次验证拿到的 token
+#   【官方代码】 逐行读出来的: 草稿 5 层, 取特征的层号, 层结构 (GDN 在 idx % 4 != 3 的层, 全注意力在 idx % 4 == 3 的层)
+T = json.load(open(os.path.join(HERE, "bench", "tlv.json")))
+al, lr, pp, cd = T["author_log"], T["local_rerun"], T["paper"], T["code"]
+st = al["stage_ms"]
+d, q, e16, e32, c = (st[k] for k in ("draft_block_n16", "verify_q_n16_q8view", "verify_exact_n16", "verify_exact_n32", "commit_replay_l6"))
+# 一步耗时 = 各阶段相加。最后一项是推算, 没实测: 第一趟也用精确权重, 拿到的 token 按 tlv_16_16 算
+sums = {"tree_16": d + e16 + c, "tree_32": d + e32 + c, "tlv_16_16": d + q + d + e16 + c,
+        "tlv_first_pass_exact": d + e16 + d + e16 + c}
+
+
+def scan(r):
+    step = r["tpot_ms"] * r["tau"]                                              # 一步耗时 = TPOT 乘每次拿到的 token
+    return dict(r, step_ms=round(step, 1), implied_tok_s=round(r["tau"] / step * 1e3, 2))
+
+
+scan_rows = [scan(r) for r in al["width_scan_5q_2048"]]
+S = {r["mode"]: r for r in scan_rows}
+# 每个 token 的耗时 = 各阶段相加除以这种做法实测拿到的 token 数
+per_token_tau = {"tree_16": S["tree_16"]["tau"], "tree_32": S["tree_32"]["tau"],
+                 "tlv_16_16": S["tlv_16_16"]["tau"], "tlv_first_pass_exact": S["tlv_16_16"]["tau"]}
+
+
+def versus(new, old):
+    a, b = S[new], S[old]
+    return {"tau_change_pct": round((a["tau"] / b["tau"] - 1) * 100, 1),
+            "step_change_pct": round((a["step_ms"] / b["step_ms"] - 1) * 100, 1),
+            "tok_s_change_pct": round((a["geomean_tok_s"] / b["geomean_tok_s"] - 1) * 100, 1)}
+
+
+loc = [dict(r, step_ms=round(r["tpot_ms"] * r["tau"], 1)) for r in lr["five_short_questions"]["rows"]]
+L = {(r["draft"], r["mode"]): r for r in loc}
+ar_ms, t16_ms = L[("dflash2", "ar")]["tpot_ms"], L[("dflash2", "tree16")]["step_ms"]
+# 量化副本的个数按层结构数: 第 2 到 61 层每层一个 gate_up; GDN 层各一个 in_qkvz 和 out_proj; 全注意力层各一个 qkv_proj 和 o_proj; 外加 LM head
+gdn_in_range = sum(1 for i in range(2, 62) if i % 4 != 3)
+attn_in_range = sum(1 for i in range(2, 62) if i % 4 == 3)
+feat_dim = len(cd["target_layer_ids_zero_based"]) * cd["draft_hidden"]
+p7 = al["public20_phase7b"]
+out["tlv"] = {
+    "stage_ms": st, "q_over_exact": round(q / e16, 3),                                     # 第一趟是精确那趟的几分之几
+    "step_stage_sum_ms": {k: round(v, 1) for k, v in sums.items()},
+    "ms_per_token_stage_sum": {k: round(sums[k] / per_token_tau[k], 2) for k in sums},
+    "draft_share_of_tlv_step": round(2 * d / sums["tlv_16_16"], 3),
+    "verify_share_of_tlv_step": round((q + e16) / sums["tlv_16_16"], 3),
+    "width_scan": scan_rows,
+    "versus": {"tree_32_vs_tree_16": versus("tree_32", "tree_16"), "tlv_16_16_vs_tree_16": versus("tlv_16_16", "tree_16"),
+               "tlv_16_24_vs_tlv_16_16": versus("tlv_16_24", "tlv_16_16")},
+    "local_5q": loc,
+    "local_tlv_vs_tree_pct": {"dflash2": round((L[("dflash2", "tlv16x16")]["tok_s"] / L[("dflash2", "tree16")]["tok_s"] - 1) * 100, 1),
+                              "dspark": round((L[("dspark", "tlv16x16")]["tok_s"] / L[("dspark", "tree16")]["tok_s"] - 1) * 100, 1)},
+    "standalone_ar_vs_tree16": {"ar_ms_per_token": ar_ms, "tree16_step_ms": t16_ms, "extra_ms": round(t16_ms - ar_ms, 1),
+                                "extra_pct": round((t16_ms / ar_ms - 1) * 100, 1)},
+    "hybrid_counts": {"gdn_layers_in_range": gdn_in_range, "attention_layers_in_range": attn_in_range,
+                      "w4": 60 + gdn_in_range, "w8": 1 + 60 + gdn_in_range + 2 * attn_in_range,
+                      "w4_modules": "60 个 gate_up 加 45 个 in_qkvz", "w8_modules": "1 个 LM head, 60 个 down, 45 个 GDN 的 out_proj, 15 个 qkv_proj, 15 个 o_proj"},
+    "phase7": {"verify_q_from_ms": st["verify_q_n16_q8view"], "verify_q_to_ms": al["hybrid_verify_q_n16_ms"],
+               "verify_q_drop_pct": round((1 - al["hybrid_verify_q_n16_ms"] / st["verify_q_n16_q8view"]) * 100, 1),
+               "draft_from_ms": al["draft_ms_phase7"][0], "draft_to_ms": al["draft_ms_phase7"][1],
+               "tlv_tok_s": p7["tlv_16_16"]["tok_s"], "tree_tok_s": p7["tree_16"]["tok_s"],
+               "tlv_over_tree_pct": round((p7["tlv_16_16"]["tok_s"] / p7["tree_16"]["tok_s"] - 1) * 100, 1)},
+    "vllm_line": {"ar_tok_s": lr["public20"]["vllm_bf16_ar_tok_s"], "dflash2_k7_tok_s": 66.77,
+                  "speedup": round(66.77 / lr["public20"]["vllm_bf16_ar_tok_s"], 2),
+                  "gdn_swap_ms_saved_per_step": lr["vllm_kernel_swaps"]["gdn_decode_saved_ms_per_step"],
+                  "gdn_swap_e2e_gain_pct": round(lr["vllm_kernel_swaps"]["gdn_e2e_median_gain"] * 100, 2),
+                  "mlp_swap_kernel_gain_pct": round(lr["vllm_kernel_swaps"]["mlp_down_best_bit_identical_gain"] * 100, 2)},
+    "feature": {"layers_one_based": [i + 1 for i in cd["target_layer_ids_zero_based"]], "hidden": cd["draft_hidden"],
+                "concat_dim": feat_dim, "fc_w_params": feat_dim * cd["draft_hidden"],
+                "fused_kv_w_params": cd["draft_hidden"] * cd["draft_layers"] * 2048},
+    "paper": {"q_over_exact": round(pp["q_pass_ms"] / pp["exact_ms"], 3), "tokens_ratio": round(pp["tokens_tlv"] / pp["tokens_one_level"], 3),
+              "gemm_growth_1_to_64_rows_pct": round((pp["gemm_ms_64row"] / pp["gemm_ms_1row"] - 1) * 100, 1)},
+    "bridge": {"agg_tok_s": lr["bridge"]["vllm_target_tlv_graph_agg_tok_s"],
+               "over_author_public_pct": round((lr["bridge"]["vllm_target_tlv_graph_agg_tok_s"] / lr["bridge"]["author_public_agg_tok_s"] - 1) * 100, 1),
+               "over_local_standalone_pct": round((lr["bridge"]["vllm_target_tlv_graph_agg_tok_s"] / lr["bridge"]["local_standalone_agg_tok_s"] - 1) * 100, 1)},
 }
 
 json.dump(out, open(os.path.join(HERE, "bench", "calc_summary.json"), "w"), indent=1, ensure_ascii=False)

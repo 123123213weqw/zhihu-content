@@ -165,5 +165,218 @@
   "hidden_size": 5120,
   "block_for_rmsnorm": 8192,
   "lanes_outside_mask_share": 0.375
+ },
+ "tlv": {
+  "stage_ms": {
+   "draft_block_n16": 7.258,
+   "verify_q_n16_q8view": 39.553,
+   "verify_exact_n16": 52.443,
+   "verify_exact_n24": 75.416,
+   "verify_exact_n32": 77.443,
+   "commit_replay_l6": 4.702
+  },
+  "q_over_exact": 0.754,
+  "step_stage_sum_ms": {
+   "tree_16": 64.4,
+   "tree_32": 89.4,
+   "tlv_16_16": 111.2,
+   "tlv_first_pass_exact": 124.1
+  },
+  "ms_per_token_stage_sum": {
+   "tree_16": 11.93,
+   "tree_32": 15.47,
+   "tlv_16_16": 11.13,
+   "tlv_first_pass_exact": 12.42
+  },
+  "draft_share_of_tlv_step": 0.131,
+  "verify_share_of_tlv_step": 0.827,
+  "width_scan": [
+   {
+    "mode": "tree_16",
+    "budget": "16",
+    "tau": 5.4,
+    "tpot_ms": 12.75,
+    "geomean_tok_s": 78.07,
+    "agg_tok_s": 74.08,
+    "step_ms": 68.9,
+    "implied_tok_s": 78.43
+   },
+   {
+    "mode": "tree_24",
+    "budget": "24",
+    "tau": 5.57,
+    "tpot_ms": 16.45,
+    "geomean_tok_s": 60.73,
+    "agg_tok_s": 57.6,
+    "step_ms": 91.6,
+    "implied_tok_s": 60.79
+   },
+   {
+    "mode": "tree_32",
+    "budget": "32",
+    "tau": 5.78,
+    "tpot_ms": 16.22,
+    "geomean_tok_s": 61.6,
+    "agg_tok_s": 59.52,
+    "step_ms": 93.8,
+    "implied_tok_s": 61.65
+   },
+   {
+    "mode": "tlv_16_16",
+    "budget": "16+16",
+    "tau": 9.99,
+    "tpot_ms": 12.21,
+    "geomean_tok_s": 82.15,
+    "agg_tok_s": 79.67,
+    "step_ms": 122.0,
+    "implied_tok_s": 81.9
+   },
+   {
+    "mode": "tlv_16_24",
+    "budget": "16+24",
+    "tau": 9.94,
+    "tpot_ms": 14.42,
+    "geomean_tok_s": 69.1,
+    "agg_tok_s": 66.81,
+    "step_ms": 143.3,
+    "implied_tok_s": 69.35
+   },
+   {
+    "mode": "tlv_16_32",
+    "budget": "16+32",
+    "tau": 9.93,
+    "tpot_ms": 14.46,
+    "geomean_tok_s": 68.8,
+    "agg_tok_s": 65.75,
+    "step_ms": 143.6,
+    "implied_tok_s": 69.16
+   }
+  ],
+  "versus": {
+   "tree_32_vs_tree_16": {
+    "tau_change_pct": 7.0,
+    "step_change_pct": 36.1,
+    "tok_s_change_pct": -21.1
+   },
+   "tlv_16_16_vs_tree_16": {
+    "tau_change_pct": 85.0,
+    "step_change_pct": 77.1,
+    "tok_s_change_pct": 5.2
+   },
+   "tlv_16_24_vs_tlv_16_16": {
+    "tau_change_pct": -0.5,
+    "step_change_pct": 17.5,
+    "tok_s_change_pct": -15.9
+   }
+  },
+  "local_5q": [
+   {
+    "draft": "dflash2",
+    "mode": "ar",
+    "tok_s": 23.1,
+    "tpot_ms": 42.71,
+    "tau": 1.0,
+    "step_ms": 42.7
+   },
+   {
+    "draft": "dflash2",
+    "mode": "tree16",
+    "tok_s": 84.04,
+    "tpot_ms": 11.23,
+    "tau": 4.83,
+    "step_ms": 54.2
+   },
+   {
+    "draft": "dflash2",
+    "mode": "tlv16x16",
+    "tok_s": 80.02,
+    "tpot_ms": 11.84,
+    "tau": 7.68,
+    "step_ms": 90.9
+   },
+   {
+    "draft": "dspark",
+    "mode": "chain8",
+    "tok_s": 64.45,
+    "tpot_ms": 14.86,
+    "tau": 3.48,
+    "step_ms": 51.7
+   },
+   {
+    "draft": "dspark",
+    "mode": "tree16",
+    "tok_s": 75.54,
+    "tpot_ms": 12.57,
+    "tau": 4.37,
+    "step_ms": 54.9
+   },
+   {
+    "draft": "dspark",
+    "mode": "tlv16x16",
+    "tok_s": 77.35,
+    "tpot_ms": 12.26,
+    "tau": 7.2,
+    "step_ms": 88.3
+   }
+  ],
+  "local_tlv_vs_tree_pct": {
+   "dflash2": -4.8,
+   "dspark": 2.4
+  },
+  "standalone_ar_vs_tree16": {
+   "ar_ms_per_token": 42.71,
+   "tree16_step_ms": 54.2,
+   "extra_ms": 11.5,
+   "extra_pct": 26.9
+  },
+  "hybrid_counts": {
+   "gdn_layers_in_range": 45,
+   "attention_layers_in_range": 15,
+   "w4": 105,
+   "w8": 136,
+   "w4_modules": "60 个 gate_up 加 45 个 in_qkvz",
+   "w8_modules": "1 个 LM head, 60 个 down, 45 个 GDN 的 out_proj, 15 个 qkv_proj, 15 个 o_proj"
+  },
+  "phase7": {
+   "verify_q_from_ms": 39.553,
+   "verify_q_to_ms": 27.58,
+   "verify_q_drop_pct": 30.3,
+   "draft_from_ms": 7.26,
+   "draft_to_ms": 4.46,
+   "tlv_tok_s": 105.01,
+   "tree_tok_s": 100.12,
+   "tlv_over_tree_pct": 4.9
+  },
+  "vllm_line": {
+   "ar_tok_s": 25.39,
+   "dflash2_k7_tok_s": 66.77,
+   "speedup": 2.63,
+   "gdn_swap_ms_saved_per_step": 0.23,
+   "gdn_swap_e2e_gain_pct": 0.38,
+   "mlp_swap_kernel_gain_pct": 0.24
+  },
+  "feature": {
+   "layers_one_based": [
+    6,
+    20,
+    34,
+    48,
+    62
+   ],
+   "hidden": 5120,
+   "concat_dim": 25600,
+   "fc_w_params": 131072000,
+   "fused_kv_w_params": 52428800
+  },
+  "paper": {
+   "q_over_exact": 0.772,
+   "tokens_ratio": 1.894,
+   "gemm_growth_1_to_64_rows_pct": 3.9
+  },
+  "bridge": {
+   "agg_tok_s": 101.44,
+   "over_author_public_pct": 3.6,
+   "over_local_standalone_pct": 1.8
+  }
  }
 }

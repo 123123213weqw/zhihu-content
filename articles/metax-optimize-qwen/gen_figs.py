@@ -5,6 +5,9 @@ fig1_chain.png   one GDN layer split into three kinds of work, and which unit of
 fig2_kernel.png  how MetaX's GDN chunk kernel lays out its state, registers and shared memory on one AP
 fig3_graph.png   CUDA Graph on a C500 as measured by a third party: draft step and verify step
 fig4_hooks.png   which of vLLM's extension points to use to replace an op on vLLM-metax
+fig5_tlv.png     two-level verification on a C500: two drafts, a quantised first pass, one exact pass, and what a step costs
+fig6_line.png    when a change pays off: tokens per verification against step time, with the iso-throughput line
+fig7_bridge.png  bridging the author's engine to vLLM's model: where the three products of prefill go
 
 Numbers come from bench/calc_summary.json (written by calc.py).
 Run:  python3 gen_figs.py  ->  ./images/
@@ -15,6 +18,7 @@ import json
 import os
 
 import matplotlib
+import numpy as np
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch, Rectangle
@@ -223,8 +227,243 @@ def fig4_hooks():
     save(fig, "fig4_hooks.png")
 
 
+# ---------------------------------------------------------------------------------------------- fig5
+def fig5_tlv():
+    t = calc["tlv"]
+    st = t["stage_ms"]
+    scan = {r["mode"]: r for r in t["width_scan"]}
+    # 示意图: token 是编的。节点数照实测的配置: 树 1 连锚点 16 个, 精确趟 C 加树 2 共 16 个
+    #         id: (token, 父节点, 在不在真实的路上)
+    nodes = {
+        "A": (" 42", None, True),                                                    # 锚点: 上一步给出的 token, 树的 0 号节点
+        "B1": (" because", "A", True), "B2": (", which", "A", False), "B3": (" and", "A", False),
+        "C1": (" 6", "B1", True), "C2": (" it", "B1", False),
+        "C3": (" is", "B2", False), "C4": (" then", "B3", False),
+        "D1": (" times", "C1", True), "D2": (" plus", "C1", False), "D3": (" correct", "C3", False),
+        "E1": (" six", "D1", False), "E2": (" equals", "D1", False), "E3": (".", "D3", False),
+        "F1": (" ==", "E1", False), "F2": (" 42", "E2", False),
+        "G1": (" 7", "D1", True), "G2": (" so", "D1", False), "G3": (" via", "D1", False),
+        "H1": (" which", "G1", True), "H2": (", giving", "G1", False), "H3": (" 42", "G2", False),
+        "I1": (" is", "H1", True), "I2": (" equals", "H1", False), "I3": (" then", "H2", False),
+        "J1": (" correct", "I1", True), "J2": (" right", "I1", False),
+        "K1": (".", "J1", True),
+        "X": ("\\n", "K1", True),                                                    # 目标模型白给的, 不是草稿写的
+    }
+    chain = ["A", "B1", "C1", "D1"]                                                 # 第一趟 (8 位) 认可的链 C
+    accepted = chain + ["G1", "H1", "I1", "J1", "K1"]                               # 精确趟通过的
+    kids = {}
+    for k, (_, p, _) in nodes.items():
+        if p is not None:
+            kids.setdefault(p, []).append(k)
+    for p in kids:                                                                  # 真的那条路排前面, 画在最上面
+        kids[p].sort(key=lambda k: not nodes[k][2])
+    depth = {}
+
+    def set_depth(k, d):
+        depth[k] = d
+        for c in kids.get(k, []):
+            set_depth(c, d + 1)
+    set_depth("A", 0)
+    order = []
+
+    def dfs(k):
+        if k in kids:
+            for c in kids[k]:
+                dfs(c)
+        else:
+            order.append(k)
+    dfs("A")
+
+    fig = plt.figure(figsize=(7.2, 4.2))
+    a = fig.add_axes((0.0, 0.0, 0.70, 1.0))
+    a.set_xlim(0, 100)
+    a.set_ylim(0, 100)
+    a.axis("off")
+    X0, DX, NW, NH, slot = 14.0, 8.6, 8.0, 4.8, 6.9
+    xk = lambda k: X0 + depth[k] * DX
+    y = {k: 91.0 - i * slot - slot / 2 for i, k in enumerate(order)}
+    for d in range(8, -1, -1):
+        for k in nodes:
+            if k in kids and depth[k] == d:
+                y[k] = (y[kids[k][0]] + y[kids[k][-1]]) / 2
+
+    def line(p0, p1, color, lw, ls="-", z=1):
+        a.add_patch(FancyArrowPatch(p0, p1, arrowstyle="-", color=color, lw=lw, linestyle=ls,
+                                    shrinkA=0, shrinkB=0, zorder=z))
+    for p in nodes:
+        for c in kids.get(p, []):
+            if c == "X":
+                line((xk(p) + NW, y[p]), (xk(c), y[c]), BLUE, 1.3, (0, (4, 2)), 1)
+            elif p in accepted and c in accepted:
+                if p in chain and c in chain:                                        # 橙色虚线露在绿线两边: 这一段是链 C
+                    line((xk(p) + NW, y[p]), (xk(c), y[c]), ORANGE, 3.4, (0, (3.2, 2.2)), 1)
+                line((xk(p) + NW, y[p]), (xk(c), y[c]), GREEN, 1.3, "-", 2)
+            else:
+                line((xk(p) + NW, y[p]), (xk(c), y[c]), "#d0d0d0", 0.8, "-", 1)
+    for k, (tok, _, _) in nodes.items():
+        x, yy = xk(k), y[k]
+        if k == "X":
+            fc, ec, tc, lw = BLUE, BLUE, "white", 0.9
+        elif k == "A":
+            fc, ec, tc, lw = "#ead9f3", PURP, DARK, 1.2
+        elif k in accepted:
+            fc, ec, tc, lw = GREEN, GREEN, "white", 0.9
+        else:
+            fc, ec, tc, lw = "#f3f3f3", "#d5d5d5", "#a3a3a3", 0.8
+        if k in chain[1:]:                                                           # 链 C 的虚线框, 垫在节点下面
+            a.add_patch(FancyBboxPatch((x - 0.8, yy - NH / 2 - 0.8), NW + 1.6, NH + 1.6,
+                                       boxstyle="round,pad=0.02,rounding_size=1.2", fill=False,
+                                       ec=ORANGE, lw=1.2, linestyle=(0, (3.2, 2.0)), zorder=1.5))
+        rbox(a, x, yy - NH / 2, NW, NH, fc, ec=ec, lw=lw, r=1.0)
+        a.text(x + NW / 2, yy, tok, ha="center", va="center", fontsize=6.0, color=tc,
+               fontweight="bold" if k in accepted else "normal", zorder=3)
+    rbox(a, 4.0, y["A"] - NH / 2, 7.0, NH, "#e6e6e6", ec="#8a8a8a", r=0.8)
+    a.text(7.5, y["A"], "…", ha="center", va="center", fontsize=7.0, color=DARK)
+    line((11.3, y["A"]), (X0 - 0.6, y["A"]), "#9a9a9a", 0.9, "-", 1)
+    a.text(X0 - 1.2, y["A"] + NH / 2 + 1.0, "锚点,上一步给的", ha="right", va="bottom", fontsize=5.8, color=PURP)
+    a.text(X0, 97.8, "树 1:锚点加 15 个草稿节点,共 16 个", ha="left", va="center", fontsize=7.4, color=DARK, fontweight="bold")
+    a.text(99.5, 97.8, "树 2:从 C 的末尾接着写,12 个", ha="right", va="center", fontsize=7.4, color=DARK, fontweight="bold")
+    a.text(99.5, 93.3, "精确趟:C 加树 2,共 16 个节点,一趟验完", ha="right", va="center", fontsize=6.6, color=GREEN)
+    a.text(14.5, 80.0, "链 C:第一趟认可的 4 个,\n只接受,不提交", ha="left", va="center", fontsize=6.6,
+           color="#b5561f", linespacing=1.5)
+    arrow(a, (27.5, 77.4), (xk("D1") + 1.0, y["D1"] + NH / 2 + 1.0), color="#b5561f", lw=0.9)
+    a.text(xk("X") + NW / 2, y["X"] - NH / 2 - 1.3, "目标模型白给的", ha="center", va="top", fontsize=5.6, color=BLUE)
+    lx = X0
+    for kind, text in (("chain", "第一趟认可的链 C"), ("ok", "精确趟通过,提交"), ("bonus", "目标模型白给的"), ("rej", "没被接受")):
+        if kind == "chain":
+            a.add_patch(FancyBboxPatch((lx, 2.6), 3.2, 2.6, boxstyle="round,pad=0.02,rounding_size=0.6", fill=False,
+                                       ec=ORANGE, lw=1.2, linestyle=(0, (3.2, 2.0))))
+        else:
+            fc, ec = {"ok": (GREEN, GREEN), "bonus": (BLUE, BLUE), "rej": ("#f3f3f3", "#c9c9c9")}[kind]
+            rbox(a, lx, 2.6, 3.2, 2.6, fc, ec=ec, lw=0.9, r=0.5)
+        a.text(lx + 4.2, 3.9, text, ha="left", va="center", fontsize=5.9, color=DARK)
+        lx += 20.0
+
+    b = fig.add_axes((0.755, 0.115, 0.235, 0.70))
+    names = ["草稿 1", "第一趟,8 位\n只接受不提交", "草稿 2", "精确验证\n说了算", "提交"]
+    vals = [st["draft_block_n16"], st["verify_q_n16_q8view"], st["draft_block_n16"], st["verify_exact_n16"], st["commit_replay_l6"]]
+    cols = ["#bbbbbb", ORANGE, "#bbbbbb", GREEN, BLUE]
+    ypos = [4, 3, 2, 1, 0]
+    b.barh(ypos, vals, height=0.62, color=cols)
+    for yp, v in zip(ypos, vals):
+        b.text(v + 1.0, yp, f"{v:.1f}", va="center", fontsize=7.2, color=DARK)
+    b.set_yticks(ypos, names, fontsize=6.3)
+    b.set_xlim(0, 64)
+    b.set_ylim(-0.6, 4.6)
+    b.set_xlabel("毫秒", fontsize=7)
+    b.tick_params(axis="x", labelsize=6.5)
+    clean(b)
+    fig.text(0.885, 0.945, "一步的账", ha="center", va="center", fontsize=9.2, fontweight="bold", color=DARK)
+    fig.text(0.885, 0.905, f"各阶段相加 {t['step_stage_sum_ms']['tlv_16_16']:.1f} ms,\n每次拿 {scan['tlv_16_16']['tau']:.2f} 个 token",
+             ha="center", va="top", fontsize=7.0, color=DARK, linespacing=1.5)
+    save(fig, "fig5_tlv.png")
+
+
+# ---------------------------------------------------------------------------------------------- fig6
+def fig6_line():
+    t = calc["tlv"]
+    S = {r["mode"]: r for r in t["width_scan"]}
+    fig, ax = plt.subplots(figsize=(7.2, 3.7))
+    xs = [60, 160]
+    s16 = S["tree_16"]["geomean_tok_s"]
+    ax.plot(xs, [s16 * x / 1e3 for x in xs], ls=(0, (5, 4)), lw=1.1, color="#7a8fa6", zorder=1)
+    tree = [m for m in ("tree_16", "tree_24", "tree_32")]
+    tlv = [m for m in ("tlv_16_16", "tlv_16_24", "tlv_16_32")]
+    ax.scatter([S[m]["step_ms"] for m in tree], [S[m]["tau"] for m in tree], s=46, color=BLUE, zorder=3, label="单棵树")
+    ax.scatter([S[m]["step_ms"] for m in tlv], [S[m]["tau"] for m in tlv], s=46, color=GREEN, marker="s", zorder=3, label="两级验证")
+    r = S["tree_16"]
+    ax.annotate(f"树,16 个节点\n{r['tau']:.2f} 个,一步 {r['step_ms']:.1f} ms", (r["step_ms"], r["tau"]), (r["step_ms"] + 2.0, r["tau"] - 0.45),
+                fontsize=7.2, color=DARK, ha="left", va="top", linespacing=1.5)
+    ax.annotate("24 个节点", (S["tree_24"]["step_ms"], S["tree_24"]["tau"]), (S["tree_24"]["step_ms"] - 1.0, S["tree_24"]["tau"] + 0.18),
+                fontsize=6.8, color=DARK, ha="right", va="bottom")
+    ax.annotate("32 个节点", (S["tree_32"]["step_ms"], S["tree_32"]["tau"]), (S["tree_32"]["step_ms"] + 1.2, S["tree_32"]["tau"] + 0.02),
+                fontsize=6.8, color=DARK, ha="left", va="bottom")
+    r = S["tlv_16_16"]
+    ax.annotate(f"两级验证,16 + 16\n{r['tau']:.2f} 个,一步 {r['step_ms']:.1f} ms", (r["step_ms"], r["tau"]), (r["step_ms"] - 1.5, r["tau"] + 0.22),
+                fontsize=7.2, color=GREEN, ha="right", va="bottom", linespacing=1.5, fontweight="bold")
+    r = S["tlv_16_24"]
+    ax.annotate(f"16 + 24 和 16 + 32\n一步 {r['step_ms']:.0f} ms 上下", (r["step_ms"], r["tau"]), (r["step_ms"] + 1.5, r["tau"] - 0.3),
+                fontsize=6.8, color=DARK, ha="left", va="top", linespacing=1.5)
+    a0, a1 = S["tree_16"], S["tree_32"]
+    ax.annotate("", (a1["step_ms"] - 1.6, a1["tau"] - 0.02), (a0["step_ms"] + 1.4, a0["tau"] + 0.04),
+                arrowprops=dict(arrowstyle="-|>", color=GRAY, lw=1.1, mutation_scale=10))
+    ax.text((a0["step_ms"] + a1["step_ms"]) / 2, (a0["tau"] + a1["tau"]) / 2 - 0.2, "加宽:token 涨 7%,耗时涨 36%", ha="center", va="top", fontsize=6.8, color=GRAY)
+    b0, b1 = S["tree_16"], S["tlv_16_16"]
+    ax.annotate("", (b1["step_ms"] - 1.5, b1["tau"] - 0.22), (b0["step_ms"] + 1.4, b0["tau"] + 0.1),
+                arrowprops=dict(arrowstyle="-|>", color=GREEN, lw=1.4, mutation_scale=11))
+    ax.text(101.0, 9.35, "两级验证:token 涨 85%,耗时涨 77%\n越过了线", ha="center", va="center", fontsize=6.9, color=GREEN, linespacing=1.5)
+    ax.set_xlim(60, 160)
+    ax.set_ylim(3.9, 13.1)
+    ax.set_xlabel("一步耗时 (ms)", fontsize=8.2)
+    ax.set_ylabel("每次验证拿到的 token", fontsize=8.2)
+    ax.tick_params(labelsize=7.2)
+    ax.set_title("划不划算看一条线:点要落到等吞吐线的上面才更快", fontsize=9.4, pad=8)
+    ax.legend(fontsize=7.2, loc="upper left", handlelength=1.0, borderaxespad=0.2)
+    clean(ax)
+    fig.subplots_adjust(left=0.09, right=0.985, top=0.90, bottom=0.17)
+    fig.canvas.draw()                                                               # 等吞吐线的标注顺着线写, 角度按显示坐标算
+    p0 = ax.transData.transform((0, 0))
+    p1 = ax.transData.transform((100, s16 * 0.1))
+    ang = float(np.degrees(np.arctan2(p1[1] - p0[1], p1[0] - p0[0])))
+    ax.text(159.0, s16 * 0.159 + 0.1, f"等吞吐线:{s16:.0f} tok/s,和单棵树一样快", rotation=ang, rotation_mode="anchor",
+            ha="right", va="bottom", fontsize=7.0, color="#5f7488")
+    fig.text(0.5, 0.012, "虚线是等吞吐线,线上的点都和单棵树一样快。6 个点取自同一份日志,5 道题各 2048 个 token;一步耗时是 TPOT 乘每次拿到的 token。",
+             ha="center", fontsize=6.9, color=GRAY)
+    save(fig, "fig6_line.png")
+
+
+# ---------------------------------------------------------------------------------------------- fig7
+def fig7_bridge():
+    f = calc["tlv"]["feature"]
+    fig, ax = plt.subplots(figsize=(7.2, 3.7))
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
+    ax.axis("off")
+    ax.text(50, 96.5, "接到 vLLM 上:prefill 跑完,三样产物各去哪", ha="center", va="center", fontsize=9.6, fontweight="bold", color=DARK)
+    rbox(ax, 1, 43.5, 13, 11, "#f1f1f1", ec=DARK)
+    ax.text(7.5, 49, "prompt 的\ntoken", ha="center", va="center", fontsize=7.4, color=DARK, linespacing=1.4)
+    arrow(ax, (14.6, 49), (18.4, 49))
+    rbox(ax, 19, 12, 38, 76, "#fbfbfb", ec=DARK)
+    ax.text(38, 83.5, "vLLM 的 64 层循环", ha="center", va="center", fontsize=8.4, color=DARK, fontweight="bold")
+    ax.text(38, 78.8, "每个子模块的 forward 换成作者的 kernel", ha="center", va="center", fontsize=6.8, color=GRAY)
+    y0, hh = 20.0, 0.84
+    for i in range(64):
+        ax.add_patch(Rectangle((21.5, y0 + (63 - i) * hh), 2.6, hh * 0.92,
+                               fc="#ead9f3" if i % 4 != 3 else "#dcebf7", ec="none"))
+    for i in f["layers_one_based"]:                                                  # 取特征的层, 从 1 数
+        yy = y0 + (64 - i) * hh
+        ax.add_patch(Rectangle((21.3, yy - 0.06), 3.0, hh * 0.92 + 0.12, fill=False, ec=ORANGE, lw=1.2))
+        ax.text(25.2, yy + hh * 0.46, str(i), va="center", ha="left", fontsize=5.2, color="#b5561f")
+    ax.text(22.8, y0 + 64 * hh + 1.0, "层", ha="center", va="bottom", fontsize=5.6, color=GRAY)
+    rows = [("RMSNorm", "rmsnorm,fused_add_rmsnorm"), ("MLP 的激活", "silu_and_mul"),
+            ("GDN,48 层", "prefill 走 gdn_prefill"), ("注意力,16 层", "prefill 走因果 SDPA")]
+    for j, (u, v) in enumerate(rows):
+        yy = 67.5 - j * 9.0
+        ax.text(30.5, yy + 1.6, u, fontsize=6.7, color=DARK, fontweight="bold")
+        ax.text(30.5, yy - 2.0, v, fontsize=6.7, color=GRAY)
+    ax.text(30.5, 25.0, "线性层不换,照常走 vLLM\n加载的那份 W12 权重", fontsize=6.4, color=GRAY, linespacing=1.5)
+    dests = [
+        (61.5, 26.5, GREEN, "草稿的上下文",
+         f"第 {', '.join(map(str, f['layers_one_based']))} 层跑完后的隐状态\n拼成 {f['concat_dim']:,} 维,write_context_kv\n写进 DFlash2 的 K,V"),
+        (33.5, 23.0, BLUE, "目标模型的状态", "16 层的 K,V\n48 层 GDN 的卷积状态和递归状态\n落在引擎私有的连续缓冲里"),
+        (9.5, 19.5, GRAY, "第 1 个输出 token", "最后一层过 LM head,取 argmax\n当下一轮的锚点"),
+    ]
+    for yy, h, col, head, body in dests:
+        rbox(ax, 63, yy, 36.5, h, "white", ec=col, lw=1.1)
+        ax.text(65, yy + h - 4.0, head, fontsize=7.4, color=DARK, fontweight="bold", ha="left", va="center")
+        ax.text(65, yy + h - 8.4, body, fontsize=6.5, color=DARK, ha="left", va="top", linespacing=1.55)
+        arrow(ax, (57.6, yy + h / 2), (62.4, yy + h / 2), color=col, lw=1.2)
+    ax.text(50, 4.0, "两级验证里,链 C 的特征先取第一趟的,临时写进草稿的 K,V;精确趟之后再用精确的特征覆盖同一批位置",
+            ha="center", va="center", fontsize=6.8, color=GRAY)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.02)
+    save(fig, "fig7_bridge.png")
+
+
 if __name__ == "__main__":
     fig1_chain()
     fig2_kernel()
     fig3_graph()
     fig4_hooks()
+    fig5_tlv()
+    fig6_line()
+    fig7_bridge()

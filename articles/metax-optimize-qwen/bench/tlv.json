@@ -1,0 +1,132 @@
+{
+ "_note": "第十到第十四节 (投机解码与两级验证) 的原始数字。每条写明出处, 推算都在 calc.py 里做。取数日期 2026-11-28。",
+ "author_log": {
+  "source": "gitlink.org.cn/JunkaiShi/c500-specpilot 的 docs/C500_SpecPilot_Experiment_Log.md, 提交 693c478b。单张 C500, Qwen3.8-27B 加 DFlash2 草稿。",
+  "stage_ms": {
+   "draft_block_n16": 7.258,
+   "verify_q_n16_q8view": 39.553,
+   "verify_exact_n16": 52.443,
+   "verify_exact_n24": 75.416,
+   "verify_exact_n32": 77.443,
+   "commit_replay_l6": 4.702
+  },
+  "stage_note": "同一进程内 50 次 CUDA Graph 回放的平均值。第一趟用的是 W12 里嵌套的 8 位视图。",
+  "verify_exact_n16_breakdown_ms": {"w12": 42.25, "gdn": 5.55, "attn": 5.68},
+  "width_scan_5q_2048": [
+   {"mode": "tree_16", "budget": "16", "tau": 5.40, "tpot_ms": 12.75, "geomean_tok_s": 78.07, "agg_tok_s": 74.08},
+   {"mode": "tree_24", "budget": "24", "tau": 5.57, "tpot_ms": 16.45, "geomean_tok_s": 60.73, "agg_tok_s": 57.60},
+   {"mode": "tree_32", "budget": "32", "tau": 5.78, "tpot_ms": 16.22, "geomean_tok_s": 61.60, "agg_tok_s": 59.52},
+   {"mode": "tlv_16_16", "budget": "16+16", "tau": 9.99, "tpot_ms": 12.21, "geomean_tok_s": 82.15, "agg_tok_s": 79.67},
+   {"mode": "tlv_16_24", "budget": "16+24", "tau": 9.94, "tpot_ms": 14.42, "geomean_tok_s": 69.10, "agg_tok_s": 66.81},
+   {"mode": "tlv_16_32", "budget": "16+32", "tau": 9.93, "tpot_ms": 14.46, "geomean_tok_s": 68.80, "agg_tok_s": 65.75}
+  ],
+  "width_scan_note": "5 道题各生成 2048 个 token。tau 是每次验证拿到的 token, 含目标模型补发的 1 个。",
+  "step_ms_table": {
+   "tlv_16_16": [116.6, 103.26, 89.8, 95.3],
+   "tree_16": [66.9, 63.48, 56.1, 58.9],
+   "columns": ["Phase 6", "Phase 7a", "Phase 7b 低位", "Phase 7b 高位"]
+  },
+  "draft_ms_phase7": [7.26, 4.46],
+  "q_backend_ms": {
+   "note": "64 层加 LM head 的投影耗时, M 是输入的行数",
+   "m16": {"mcblas_bf16": 39.22, "w12_exact_phase6": 44.98, "w12_exact_phase7b": 39.99, "w12_q8_view": 31.93, "mctlass_w8a8": 24.08, "mctlass_w4a8_pc": 22.98},
+   "m32": {"mcblas_bf16": 39.72, "w12_exact_phase6": 61.18, "w12_exact_phase7b": 58.08, "w12_q8_view": 58.72, "mctlass_w8a8": 25.63, "mctlass_w4a8_pc": 30.16},
+   "cos": {"mctlass_w8a8": 0.99992, "mctlass_w4a8_pc": 0.9927}
+  },
+  "hybrid_copy_gb": 15.70,
+  "hybrid_verify_q_n16_ms": 27.58,
+  "hybrid_w4_modules": ["mlp.gate_up_proj", "linear_attn.in_proj_qkvz"],
+  "hybrid_w8_modules": ["mlp.down_proj", "linear_attn.out_proj", "self_attn.qkv_proj", "self_attn.o_proj", "lm_head"],
+  "hybrid_layer_range": [2, 61],
+  "public20_phase7b": {
+   "tree_16": {"tok_s": 100.12, "speedup": 3.88, "tpot_ms": 9.72},
+   "tlv_16_16": {"tok_s": 105.01, "speedup": 4.07, "tpot_ms": 9.37},
+   "peak_mib": 60316
+  },
+  "q_noise": {
+   "noise": 0.25,
+   "tau_before": [8.23, 11.09],
+   "tau_after": [3.40, 3.86],
+   "tok_s_after": 30,
+   "token_exact_100pct": ["math500-25", "mbpp-31"],
+   "gap_max": 0.125
+  },
+  "qview_only_c1": {"tok_s": 78.17, "char_exact": "0/10", "lossless_w12_char_exact": "4/10"}
+ },
+ "local_rerun": {
+  "source": "同一份代码 (提交 693c478b) 在另一张 C500 上复测, MACA 3.8.4.9。",
+  "five_short_questions": {
+   "note": "5 道短题, 每题最多 256 个输出 token, 每个配置 2 轮取中位数。AR, 树和 TLV 共用同一份 W12 目标权重。",
+   "rows": [
+    {"draft": "dflash2", "mode": "ar", "tok_s": 23.10, "tpot_ms": 42.71, "tau": 1.00},
+    {"draft": "dflash2", "mode": "tree16", "tok_s": 84.04, "tpot_ms": 11.23, "tau": 4.83},
+    {"draft": "dflash2", "mode": "tlv16x16", "tok_s": 80.02, "tpot_ms": 11.84, "tau": 7.68},
+    {"draft": "dspark", "mode": "chain8", "tok_s": 64.45, "tpot_ms": 14.86, "tau": 3.48},
+    {"draft": "dspark", "mode": "tree16", "tok_s": 75.54, "tpot_ms": 12.57, "tau": 4.37},
+    {"draft": "dspark", "mode": "tlv16x16", "tok_s": 77.35, "tpot_ms": 12.26, "tau": 7.20}
+   ]
+  },
+  "public20": {
+   "note": "作者的公开 20 题同顺序, 单并发, 上下文 3072, 输出上限 2048, 每条路线 1 轮",
+   "vllm_bf16_ar_tok_s": 25.39,
+   "rows": [
+    {"path": "vLLM BF16 + DFlash2 K7", "tok_s": 66.77, "tpot_ms": 13.86, "tau": 4.49},
+    {"path": "vLLM W12 v3 + DFlash2 K11", "tok_s": 72.93, "tpot_ms": 12.63, "tau": 4.86},
+    {"path": "独立引擎 DFlash2 TLV 16+16", "tok_s": 99.65, "tpot_ms": 9.19, "tau": 9.36}
+   ]
+  },
+  "c16": {
+   "note": "同一组 20 个请求, 16 路并发, 每路 256 个 token",
+   "vllm_bf16_ar_tok_s": 207.87,
+   "standalone_dflash2_tok_s": 203.26,
+   "standalone_dspark_tok_s": 193.34,
+   "vllm_w12_dflash2_tok_s": 111.87
+  },
+  "vllm_kernel_swaps": {
+   "note": "vLLM 0.28.0 加 vLLM-MetaX 0.28, 不开投机解码",
+   "gdn_decode_saved_us_per_layer": 4.7,
+   "gdn_decode_saved_ms_per_step": 0.23,
+   "gdn_e2e_median_gain": 0.0038,
+   "gdn_e2e_pairs": [-0.0035, 0.0219, 0.0038],
+   "mlp_down_best_bit_identical_gain": 0.0024
+  },
+  "bridge": {
+   "note": "作者的 TLV 循环, kernel 和私有缓存不动, 目标模型换成 vLLM 加载的那份; 内部工作区 32 槽",
+   "author_public_agg_tok_s": 97.91,
+   "local_standalone_agg_tok_s": 99.65,
+   "vllm_target_tlv_graph_agg_tok_s": 101.44,
+   "exact_text": "20/20",
+   "exact_length": "20/20",
+   "exact_steps": "20/20",
+   "steps": 2129,
+   "tau": 9.357,
+   "parity": "首轮 prefill 的 248,320 个 logits, KV 和 GDN 状态, 首轮 N16 的 Q 与 Exact 分数和特征逐元素一致",
+   "ws16": {"tok_s": 99.94, "extra_tokens": 794, "issue": "HumanEval-19 有语法错误"}
+  }
+ },
+ "paper": {
+  "source": "SpecPilot, arXiv 2611.02501, 4.3 节和附录 C; H100",
+  "q_pass_ms": 11.5,
+  "exact_ms": 14.9,
+  "tokens_one_level": 6.16,
+  "tokens_tlv": 11.67,
+  "paired_gain": 1.037,
+  "bf16_batch_slower": 0.13,
+  "gemm_ms_1row": 17.88,
+  "gemm_ms_64row": 18.58,
+  "q8_top1_match": 0.987
+ },
+ "code": {
+  "source": "c500_specpilot_engine.py 和 c500_specpilot_kernels.py, 提交 693c478b; 逐行读出来的",
+  "draft_layers": 5,
+  "draft_block_size": 8,
+  "draft_hidden": 5120,
+  "target_layer_ids_zero_based": [5, 19, 33, 47, 61],
+  "target_layers": 64,
+  "gdn_layers": 48,
+  "attention_layers": 16,
+  "n_q": 16,
+  "n_exact": 16,
+  "vocab": 248320
+ }
+}
