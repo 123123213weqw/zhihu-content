@@ -16,7 +16,7 @@ const stripped = md.replace(/```[\s\S]*?```/g, "");
 // extract $$block$$ first, then $inline$ on what remains
 const formulas = [];
 const noBlocks = stripped.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => { formulas.push(tex.trim()); return ""; });
-noBlocks.replace(/\$([^$\n]+?)\$/g, (_, tex) => { formulas.push(tex.trim()); return ""; });
+noBlocks.replace(/\$([^$\n]+?)\$(?!\d)/g, (_, tex) => { formulas.push(tex.trim()); return ""; });
 
 let fail = 0;
 formulas.forEach((tex, i) => {

@@ -40,11 +40,11 @@ $$\text{FLOPs} = m \times n\ (\text{mul}) + m \times n\ (\text{add}) = 2mn$$
 
 | 操作 | FLOPs/token |
 |---|---|
-| QKV 投影(3 个 $d \times d$ 矩阵乘) | $6d^2$ |
-| Attention($QK^T$ 和 $AV$) | $\sim 4 \cdot \text{seq} \cdot d$ |
-| 输出投影($d \times d$) | $2d^2$ |
-| FFN($d \to 4d \to d$) | $16d^2$ |
-| **每层合计** | $\sim 28d^2$ |
+| QKV 投影(3 个 d×d 矩阵乘) | 6d² |
+| Attention(QKᵀ 和 AV) | ~4·seq·d |
+| 输出投影(d×d) | 2d² |
+| FFN(d → 4d → d) | 16d² |
+| **每层合计** | ~28d² |
 
 GPT-3 有 96 层,$d = 12288$:
 
@@ -91,7 +91,7 @@ $$\text{FP16 multiplier area} \propto 16^2 = 256 \quad \text{vs} \quad \text{FP8
 
 $$A_{\text{mult}} \propto n \times (n \text{ AND gates} + n \text{ full adders}) \approx n^2$$
 
-| 精度 | 位宽 $n$ | 相对面积 $n^2$ | 同面积可放 |
+| 精度 | 位宽 n | 相对面积 n² | 同面积可放 |
 |---|---|---|---|
 | FP64(53-bit 尾数) | 53 | 2,809 | 1 个 |
 | FP32(23-bit) | 24 | 576 | ~5 个 |
@@ -141,10 +141,10 @@ $$\text{Training FLOPs} \approx 6 \times N \times D$$
 
 | 模型 | 参数 N | Token D | 训练 FLOPs | 估计成本 |
 |---|---|---|---|---|
-| GPT-2 | 1.5B | 10B | $9 \times 10^{19}$ | ~$5 万 |
-| GPT-3 | 175B | 300B | $3.15 \times 10^{23}$ | ~$460 万 |
-| Llama 3 | 405B | 15T | $3.65 \times 10^{25}$ | ~$6000 万+ |
-| **DeepSeek-V3** | **671B** | **14.8T** | **$5.95 \times 10^{25}$** | **~$558 万** |
+| GPT-2 | 1.5B | 10B | 9 × 10¹⁹ | ~$5 万 |
+| GPT-3 | 175B | 300B | 3.15 × 10²³ | ~$460 万 |
+| Llama 3 | 405B | 15T | 3.65 × 10²⁵ | ~$6000 万+ |
+| **DeepSeek-V3** | **671B** | **14.8T** | **5.95 × 10²⁵** | **~$558 万** |
 
 注意 DeepSeek-V3:FLOPs 比 Llama 3 高 63%,但成本只有 Llama 3 的 1/10——因为用了 MoE 架构 + H800(阉割版 H100)+ 极致 MFU 优化。
 

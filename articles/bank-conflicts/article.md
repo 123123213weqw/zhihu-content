@@ -430,13 +430,13 @@ __shared__ float emb_table[1024][128 + 1];  // +1 padding
 
 | stride | word 地址模式 | Bank 分布 | 冲突? |
 |---|---|---|---|
-| 1(连续) | $tid$ | $tid \bmod 32$ → 全不同 | **无** ✓ |
-| 2 | $2 tid$ | $2tid \bmod 32$ → 2-way 冲突 | **2-way** |
-| 4 | $4 tid$ | $4tid \bmod 32$ → 4-way 冲突 | **4-way** |
-| 8 | $8 tid$ | $8tid \bmod 32$ → 8-way 冲突 | **8-way** |
-| 16 | $16 tid$ | $16tid \bmod 32$ → 2-way 冲突 | **2-way** |
-| 32 | $32 tid$ | $32tid \bmod 32 = 0$ → 全同一个 | **32-way** ✗ |
-| 33(与32互素) | $33 tid$ | $33tid \bmod 32 = tid$ → 全不同 | **无** ✓ |
+| 1(连续) | tid | tid mod 32 → 全不同 | **无** ✓ |
+| 2 | 2·tid | 2·tid mod 32 → 2-way 冲突 | **2-way** |
+| 4 | 4·tid | 4·tid mod 32 → 4-way 冲突 | **4-way** |
+| 8 | 8·tid | 8·tid mod 32 → 8-way 冲突 | **8-way** |
+| 16 | 16·tid | 16·tid mod 32 → 2-way 冲突 | **2-way** |
+| 32 | 32·tid | 32·tid mod 32 = 0 → 全同一个 | **32-way** ✗ |
+| 33(与32互素) | 33·tid | 33·tid mod 32 = tid → 全不同 | **无** ✓ |
 | 0(同地址) | 同一个 word | 同一个地址 | **广播,无冲突** ✓ |
 
 **核心规律**:

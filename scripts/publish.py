@@ -61,7 +61,9 @@ def convert_formulas(html: str) -> str:
     return html
 
 
-FORMULA_MD_RE = re.compile(r"\$\$[\s\S]+?\$\$|\$[^$\n]+?\$")
+# A closing $ followed directly by a digit is a price, not the end of a formula: in
+# "$0.14** | **$0.28**" the two dollar signs of the prices must stay literal (same rule as Pandoc).
+FORMULA_MD_RE = re.compile(r"\$\$[\s\S]+?\$\$|\$[^$\n]+?\$(?!\d)")
 CODE_FENCE_RE = re.compile(r"```[\s\S]*?```")
 
 
@@ -300,6 +302,7 @@ def main() -> None:
             f"https://zhuanlan.zhihu.com/api/articles/{aid}", timeout=15).json()
         got = back.get("content", "")
         n_f = got.count("eeimg"); n_t = got.count('data-draft-type="table"')
+        # the copy read back right after publishing can still list every figure twice
         n_i = len(re.findall(r"<img(?![^>]*eeimg)", got))
         client.close()
         print(f"\n✓ Updated in place: https://zhuanlan.zhihu.com/p/{aid}")

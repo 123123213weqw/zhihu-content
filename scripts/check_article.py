@@ -65,7 +65,7 @@ def main() -> int:
     for n, line in enumerate(body.split("\n"), 1):
         if line.startswith("```"):
             in_code = not in_code
-        elif not in_code and line.lstrip().startswith("|") and re.search(r"\$[^$\n]+?\$", line):
+        elif not in_code and line.lstrip().startswith("|") and re.search(r"\$[^$\n]+?\$(?!\d)", line):
             table_math.append((n, line[:60]))
     for n, line in table_math:
         print(f"  表格里的公式(知乎会去掉):第 {n} 行(相对正文): {line}")
