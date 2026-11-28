@@ -1,0 +1,78 @@
+{
+ "minimax": {
+  "nodes": 549946,
+  "leaves": 255168,
+  "value": 0,
+  "s": 0.5321777809876949
+ },
+ "alphabeta_natural": {
+  "nodes": 18297,
+  "leaves": 7330,
+  "cutoffs": 8180,
+  "value": 0,
+  "s": 0.019509202102199197
+ },
+ "alphabeta_center_first": {
+  "nodes": 7275,
+  "leaves": 2893,
+  "cutoffs": 3090,
+  "value": 0,
+  "s": 0.007649408187717199
+ },
+ "alphabeta_after_two_natural": {
+  "nodes": 703,
+  "leaves": 273,
+  "cutoffs": 275
+ },
+ "alphabeta_after_two_center_first": {
+  "nodes": 1157,
+  "leaves": 475,
+  "cutoffs": 471
+ },
+ "uct_vs_random": [
+  {
+   "sims_per_move": 0,
+   "games": 2000,
+   "x_win": 1138,
+   "draw": 250,
+   "x_loss": 612,
+   "win_rate": 0.569,
+   "no_loss_rate": 0.694,
+   "simulations_per_game": 0.0,
+   "s": 0.0163874221034348
+  },
+  {
+   "sims_per_move": 10,
+   "games": 300,
+   "x_win": 259,
+   "draw": 19,
+   "x_loss": 22,
+   "win_rate": 0.8633333333333333,
+   "no_loss_rate": 0.9266666666666666,
+   "simulations_per_game": 39.166666666666664,
+   "s": 0.08257409604266286
+  },
+  {
+   "sims_per_move": 100,
+   "games": 300,
+   "x_win": 298,
+   "draw": 2,
+   "x_loss": 0,
+   "win_rate": 0.9933333333333333,
+   "no_loss_rate": 1.0,
+   "simulations_per_game": 328.6666666666667,
+   "s": 0.7587673340458423
+  },
+  {
+   "sims_per_move": 1000,
+   "games": 100,
+   "x_win": 100,
+   "draw": 0,
+   "x_loss": 0,
+   "win_rate": 1.0,
+   "no_loss_rate": 1.0,
+   "simulations_per_game": 3150.0,
+   "s": 2.612989249173552
+  }
+ ]
+}

@@ -1,0 +1,90 @@
+{
+ "e_topk": {
+  "n": 4000000,
+  "sort_s": 1.1162352690007538,
+  "rows": [
+   {
+    "k": 10,
+    "nlargest_s": 0.04414166184142232,
+    "nlargest_n_over_10_s": 0.004413039889186621,
+    "heap_comparisons_est": 4000508,
+    "entered_heap": 127,
+    "speedup": 25.287567853942555,
+    "linear_in_n": 10.002552197541588
+   },
+   {
+    "k": 100,
+    "nlargest_s": 0.044063882902264595,
+    "nlargest_n_over_10_s": 0.004577418090775609,
+    "heap_comparisons_est": 4007161,
+    "entered_heap": 1023,
+    "speedup": 25.332203961158097,
+    "linear_in_n": 9.626361854745564
+   },
+   {
+    "k": 1000,
+    "nlargest_s": 0.04857812309637666,
+    "nlargest_n_over_10_s": 0.006873216014355421,
+    "heap_comparisons_est": 4083100,
+    "entered_heap": 8310,
+    "speedup": 22.978147319240737,
+    "linear_in_n": 7.067742814268638
+   }
+  ],
+  "sort_counted": {
+   "n": 100000,
+   "comparisons": 1529011,
+   "per_n_log2n": 0.9205563494003591
+  }
+ },
+ "f_range": {
+  "ops": 1000,
+  "rows": [
+   {
+    "n": 1048576,
+    "avg_range": 269715.438,
+    "naive_query_us": 58.568548411130905,
+    "naive_update_us": 0.909087248146534,
+    "fenwick_query_us": 3.171968273818493,
+    "fenwick_update_us": 1.9865110516548157,
+    "fenwick_query_steps": 19,
+    "fenwick_update_steps": 12,
+    "fenwick_max_steps": 40,
+    "prefix_query_us": 0.5386830307543278,
+    "prefix_update_us": 2714.069443754852,
+    "prefix_update_over_fenwick": 1366.2493553680263,
+    "naive_over_fenwick": 18.46441810107535
+   },
+   {
+    "n": 4194304,
+    "avg_range": 1091791.04,
+    "naive_query_us": 232.85753559321165,
+    "naive_update_us": 1.0831281542778015,
+    "fenwick_query_us": 4.860456101596355,
+    "fenwick_update_us": 2.9104994609951973,
+    "fenwick_query_steps": 23,
+    "fenwick_update_steps": 9,
+    "fenwick_max_steps": 44,
+    "prefix_query_us": 0.5894030909985304,
+    "prefix_update_us": 23496.69556133449,
+    "prefix_update_over_fenwick": 8073.080196792128,
+    "naive_over_fenwick": 47.908577040070895
+   },
+   {
+    "n": 16777216,
+    "avg_range": 4121869.238,
+    "naive_query_us": 1436.8611155077815,
+    "naive_update_us": 1.434003934264183,
+    "fenwick_query_us": 6.155925802886486,
+    "fenwick_update_us": 3.754044882953167,
+    "fenwick_query_steps": 25,
+    "fenwick_update_steps": 13,
+    "fenwick_max_steps": 48,
+    "prefix_query_us": 0.6876359693706036,
+    "prefix_update_us": 94090.78455064446,
+    "prefix_update_over_fenwick": 25063.84113250845,
+    "naive_over_fenwick": 233.41105164621115
+   }
+  ]
+ }
+}
